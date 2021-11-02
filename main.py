@@ -1,3 +1,4 @@
+import argparse
 import copy
 import os
 import re
@@ -241,15 +242,27 @@ def startGUI():
     dpg.destroy_context()
 
 if __name__ == '__main__':
+    # Command line Arguments
+    parser = argparse.ArgumentParser(description='Python GUI to launch ML-Agents and Hyperparameter Tuning')
+    parser.add_argument('--env-path', type=str, default=None, help="Path to environment. If specified, overrides env_path in the config file")
+    parser.add_argument('--behavior-name', type=str, default=None, help='Name of behaviour. This can be found under the agent\'s "Behavior Parameters" component in the inspector of Unity')
+
     # ML Agents Data
     mlAgentsConfigFile = "ml-agents/ppo.yaml"
     mlAgentsData = loadMlAgentsConfig(mlAgentsConfigFile)["default_settings"]
-    # print(mlAgentsData)
-    defaultMlAgentsData = copy.deepcopy(mlAgentsData)
 
     # Hyper Parameter Data
     hyperParameterConfigFile = "configs/bayes.yaml"
     hyperParameterTuningData = loadHyperParameterConfig(hyperParameterConfigFile)
+
+    # Override loaded in data with the command line arguments
+    args = parser.parse_args()
+    if args.behavior_name != None:
+        hyperParameterTuningData["realm_ai"]["behavior_name"] = args.behavior_name
+    if args.env_path != None:
+        hyperParameterTuningData["mlagents"]["env_settings"]["env_path"] = args.env_path
+
+    defaultMlAgentsData = copy.deepcopy(mlAgentsData)
     defaultHyperParameterTuningData = copy.deepcopy(hyperParameterTuningData)
 
     startGUI()
