@@ -6,6 +6,10 @@ import dearpygui.dearpygui as dpg
 import webbrowser
 import yaml
 
+# Display Variables
+showMlAgents = False
+showHyperParameter = False
+
 # ML-Agents Variables
 mlAgentsData = {}
 defaultMlAgentsData = {}
@@ -140,10 +144,11 @@ def startGUI():
             dpg.add_button(label="Proceed", width=75, callback=run_training, user_data=[config_file_to_run])
             dpg.add_button(label="Cancel", width=75, callback=lambda: dpg.configure_item("prompt", show=False))
 
-    # Tuner Main Window
+    # Main Window
     with dpg.window(label="Training Manager", width=GLOBAL_WIDTH-15, height=GLOBAL_HEIGHT-50, no_collapse=True, no_close=True):        
          
-        with dpg.collapsing_header(label="ML Agents Training", default_open = True):
+        # ML Agents Window
+        with dpg.collapsing_header(label="ML Agents Training", default_open=showMlAgents):
             dpg.add_text("Edit the values, press save, and then start training!", color=[232,163,33])
             with dpg.group(horizontal=True):
                 dpg.add_text("For more information about the training configuration files", color=[232,163,33])
@@ -209,7 +214,8 @@ def startGUI():
                 dpg.add_button(label="Start Training", callback=prompt_show_config, small=True)
                 dpg.add_spacer(height=30)
 
-        with dpg.collapsing_header(label="Hyper Parameter Tuning Configuration"):
+        # Hyper Parameter Tuner Main Window
+        with dpg.collapsing_header(label="Hyper Parameter Tuning Configuration", default_open=showHyperParameter):
             with dpg.tab_bar(label="Tab bar"):
                 # Basic Tab
                 with dpg.tab(label="Basic"):
@@ -246,6 +252,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Python GUI to launch ML-Agents and Hyperparameter Tuning')
     parser.add_argument('--env-path', type=str, default=None, help="Path to environment. If specified, overrides env_path in the config file")
     parser.add_argument('--behavior-name', type=str, default=None, help='Name of behaviour. This can be found under the agent\'s "Behavior Parameters" component in the inspector of Unity')
+    parser.add_argument('--mlagents', action='store_true')
+    parser.add_argument('--hyperparameter', action='store_true')
 
     # ML Agents Data
     mlAgentsConfigFile = "ml-agents/ppo.yaml"
@@ -261,6 +269,10 @@ if __name__ == '__main__':
         hyperParameterTuningData["realm_ai"]["behavior_name"] = args.behavior_name
     if args.env_path != None:
         hyperParameterTuningData["mlagents"]["env_settings"]["env_path"] = args.env_path
+    if args.mlagents:
+        showMlAgents = True
+    if args.hyperparameter:
+        showHyperParameter = True
 
     defaultMlAgentsData = copy.deepcopy(mlAgentsData)
     defaultHyperParameterTuningData = copy.deepcopy(hyperParameterTuningData)
