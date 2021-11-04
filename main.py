@@ -2,8 +2,9 @@ import argparse
 import copy
 import os
 import re
-import dearpygui.dearpygui as dpg
+import runner
 import webbrowser
+import dearpygui.dearpygui as dpg
 import yaml
 
 # Display Variables
@@ -78,9 +79,9 @@ def edit_and_create_config(sender, app_data, user_data):
     hyperParameterTuningData["mlagents"]["default_settings"]["max_steps"] = int(dpg.get_value(user_data[2]))
 
     if len(dpg.get_value(user_data[3])) != 0 and dpg.get_value(user_data[3]) != ".yaml":
-        newConfigFile = "configs/" + dpg.get_value(user_data[3])
+        newConfigFile = "hyperparameter-configs/" + dpg.get_value(user_data[3])
     else:
-        newConfigFile = "configs/config.yaml"
+        newConfigFile = "hyperparameter-configs/config.yaml"
 
     with open(newConfigFile, 'w') as outfile:
         yaml.dump(hyperParameterTuningData, outfile, sort_keys=False)
@@ -90,7 +91,7 @@ def edit_and_create_config(sender, app_data, user_data):
 def prompt_show_config(sender, app_data, user_data):
     # Get all possible config files in current directory to show up
     allHyperParameterTuningConfigFiles = [] # reset list
-    directory = "configs/"
+    directory = "hyperparameter-configs/"
     try:
         for file in os.listdir(directory):
             if file.endswith(".yaml"):
@@ -115,8 +116,8 @@ def run_training(sender, app_data, user_data):
     config_file_to_run = dpg.get_value(user_data[0])
     dpg.configure_item("prompt", show=False)
 
-    print("The config file that is being run is: ", config_file_to_run)
-
+    config_path = os.path.dirname(__file__) + "/" + config_file_to_run
+    runner.runTunerAndMlAgents(config_path, hyperParameterTuningData["mlagents"]["env_settings"]["env_path"], hyperParameterTuningData["realm_ai"]["behavior_name"])
 
 def startGUI():
     dpg.create_context()
@@ -132,8 +133,8 @@ def startGUI():
             dpg.add_theme_color(dpg.mvThemeCol_Text, [29, 151, 236])
 
     # Tuner Prompt
-    with dpg.window(label="Create Configuration and Start Training", modal=True, pos=[GLOBAL_WIDTH/6, GLOBAL_HEIGHT/3] ,id="prompt", show=False):
-        dpg.add_text("This will create a new config file and start the training.\nChoose a configuration file:")
+    with dpg.window(label="Hyperparameter Tuning and Training", modal=True, pos=[GLOBAL_WIDTH/6, GLOBAL_HEIGHT/3] ,id="prompt", show=False):
+        dpg.add_text("This will start hyperparameter tuning and then start training.\nChoose a hyperparameter configuration file:")
         dpg.add_spacer(height=10)
         config_file_to_run = dpg.add_combo(label="config_file", items=allHyperParameterTuningConfigFiles)
         dpg.add_spacer(height=10)
@@ -160,7 +161,7 @@ def startGUI():
             dpg.add_input_int(label="batch_size", default_value=int(mlAgentsData["hyperparameters"]["batch_size"]), step=128, min_value=1, min_clamped=True)
             _help("Typical range (Continuous PPO): 512 - 5120")
             dpg.add_input_int(label="buffer_size", default_value=int(mlAgentsData["hyperparameters"]["buffer_size"]), step=128, min_value=32, min_clamped=True)
-            _help("ypical range (PPO): 2048 - 409600")
+            _help("Typical range (PPO): 2048 - 409600")
             dpg.add_input_float(label="learning_rate", default_value=float(mlAgentsData["hyperparameters"]["learning_rate"]), format="%e", min_value=1e-9, min_clamped=True, max_value=0.99999, max_clamped=True)
             _help("Typical range: 1e-5 - 1e-3")
             dpg.add_input_float(label="beta", default_value=float(mlAgentsData["hyperparameters"]["beta"]), format="%e", min_value=1e-9, min_clamped=True, max_value=0.49999, max_clamped=True)
@@ -231,9 +232,9 @@ def startGUI():
                     with dpg.group(horizontal=True):
                         dpg.add_button(label="Restore Defaults", callback=restore_config, user_data=[env_path, behavior_name, max_steps], small=True)
                         dpg.add_spacer(width=8)
-                        dpg.add_button(label="Save Configuration", callback=edit_and_create_config, user_data=[env_path, behavior_name, max_steps, config_file_name], small=True)
+                        dpg.add_button(label="Save Tuning Configuration", callback=edit_and_create_config, user_data=[env_path, behavior_name, max_steps, config_file_name], small=True)
                         dpg.add_spacer(width=8)
-                        dpg.add_button(label="Start Training", callback=prompt_show_config, user_data=[config_file_to_run], small=True)
+                        dpg.add_button(label="Start Hyperparameter Tuning and Training", callback=prompt_show_config, user_data=[config_file_to_run], small=True)
 
                 # Advanced Tab
                 with dpg.tab(label="Advanced"):
@@ -256,11 +257,11 @@ if __name__ == '__main__':
     parser.add_argument('--hyperparameter', action='store_true')
 
     # ML Agents Data
-    mlAgentsConfigFile = "ml-agents/ppo.yaml"
+    mlAgentsConfigFile = "ml-agents-configs/ppo.yaml"
     mlAgentsData = loadMlAgentsConfig(mlAgentsConfigFile)["default_settings"]
 
     # Hyper Parameter Data
-    hyperParameterConfigFile = "configs/bayes.yaml"
+    hyperParameterConfigFile = "hyperparameter-configs/bayes.yaml"
     hyperParameterTuningData = loadHyperParameterConfig(hyperParameterConfigFile)
 
     # Override loaded in data with the command line arguments
