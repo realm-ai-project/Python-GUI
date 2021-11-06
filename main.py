@@ -50,7 +50,7 @@ def _hyperlink(text, address):
     b = dpg.add_button(label=text, callback=lambda:webbrowser.open(address))
     dpg.bind_item_theme(b, "__demo_hyperlinkTheme")
 
-def restore_config(sender, app_data, user_data):
+def restore_hyperparameter_config(sender, app_data, user_data):
     print("configuration restored") # debugging log
 
     hyperParameterTuningData["mlagents"]["env_settings"]["env_path"] = defaultHyperParameterTuningData["mlagents"]["env_settings"]["env_path"]
@@ -66,11 +66,11 @@ def restore_config(sender, app_data, user_data):
     user_data[0] = env_path
     user_data[1] = behavior_name
     user_data[2] = max_steps
-    user_data[3] = config_file_name
+    user_data[3] = hyperparameter_config_file_name
 
     ** we can keep adding to this list
 """
-def edit_and_create_config(sender, app_data, user_data):
+def edit_and_create_hyperparameter_config(sender, app_data, user_data):
     print("configuration saved") # debugging log
 
     # Overwrite existing config file
@@ -88,7 +88,7 @@ def edit_and_create_config(sender, app_data, user_data):
 
     print("new configuration created") # debugging log
 
-def prompt_show_config(sender, app_data, user_data):
+def prompt_show_hyperparameter_config(sender, app_data, user_data):
     # Get all possible config files in current directory to show up
     allHyperParameterTuningConfigFiles = [] # reset list
     directory = "hyperparameter-configs/"
@@ -108,15 +108,15 @@ def prompt_show_config(sender, app_data, user_data):
 
 
 """
-    user_data[0] = config_file_to_run
+    user_data[0] = hyperparameter_config_file_to_run
 
     ** we can keep adding to this list
 """
-def run_training(sender, app_data, user_data):
-    config_file_to_run = dpg.get_value(user_data[0])
+def run_tune_and_training(sender, app_data, user_data):
+    hyperparameter_config_file_to_run = dpg.get_value(user_data[0])
     dpg.configure_item("prompt", show=False)
 
-    config_path = os.path.dirname(__file__) + "/" + config_file_to_run
+    config_path = os.path.dirname(__file__) + "/" + hyperparameter_config_file_to_run
     runner.runTunerAndMlAgents(config_path, hyperParameterTuningData["mlagents"]["env_settings"]["env_path"], hyperParameterTuningData["realm_ai"]["behavior_name"])
 
 def startGUI():
@@ -136,13 +136,13 @@ def startGUI():
     with dpg.window(label="Hyperparameter Tuning and Training", modal=True, pos=[GLOBAL_WIDTH/6, GLOBAL_HEIGHT/3] ,id="prompt", show=False):
         dpg.add_text("This will start hyperparameter tuning and then start training.\nChoose a hyperparameter configuration file:")
         dpg.add_spacer(height=10)
-        config_file_to_run = dpg.add_combo(label="config_file", items=allHyperParameterTuningConfigFiles)
+        hyperparameter_config_file_to_run = dpg.add_combo(label="config_file", items=allHyperParameterTuningConfigFiles)
         dpg.add_spacer(height=10)
         dpg.add_separator()
         dpg.add_spacer(height=1)
 
         with dpg.group(horizontal=True):
-            dpg.add_button(label="Proceed", width=75, callback=run_training, user_data=[config_file_to_run])
+            dpg.add_button(label="Proceed", width=75, callback=run_tune_and_training, user_data=[hyperparameter_config_file_to_run])
             dpg.add_button(label="Cancel", width=75, callback=lambda: dpg.configure_item("prompt", show=False))
 
     # Main Window
@@ -208,33 +208,33 @@ def startGUI():
             dpg.add_spacer(height=20)
 
             with dpg.group(horizontal=True):
-                dpg.add_button(label="Restore Defaults", callback=restore_config, small=True)
+                dpg.add_button(label="Restore Defaults", callback=restore_hyperparameter_config, small=True)
                 dpg.add_spacer(width=8)
-                dpg.add_button(label="Save Configuration", callback=edit_and_create_config, small=True)
+                dpg.add_button(label="Save Configuration", callback=edit_and_create_hyperparameter_config, small=True)
                 dpg.add_spacer(width=8)
-                dpg.add_button(label="Start Training", callback=prompt_show_config, small=True)
+                dpg.add_button(label="Start Training", callback=prompt_show_hyperparameter_config, small=True)
                 dpg.add_spacer(height=30)
 
-        # Hyper Parameter Tuner Main Window
-        with dpg.collapsing_header(label="Hyper Parameter Tuning Configuration", default_open=showHyperParameter):
+        # Hyperparameter Tuner Main Window
+        with dpg.collapsing_header(label="Hyperparameter Tuning Configuration", default_open=showHyperParameter):
             with dpg.tab_bar(label="Tab bar"):
                 # Basic Tab
                 with dpg.tab(label="Basic"):
-                    dpg.add_text("Basic Hyper Parameter Configuration Values:\nEdit the values, press save, and then start training!", color=[232,163,33])
+                    dpg.add_text("Basic Hyperparameter Tuning Configuration Values:\nEdit the values, press save, and then start training!", color=[232,163,33])
                     dpg.add_spacer(height=10)
 
-                    config_file_name = dpg.add_input_text(label="config_file_name", default_value=".yaml", width=400, hint="new config file name")
+                    hyperparameter_config_file_name = dpg.add_input_text(label="hyperparameter_config_file_name", default_value=".yaml", width=400, hint="new config file name")
                     env_path = dpg.add_input_text(label="env_path", default_value=str(hyperParameterTuningData["mlagents"]["env_settings"]["env_path"]), width=400, hint="env_path of ml-agents")
                     behavior_name = dpg.add_input_text(label="behavior_name", default_value=str(hyperParameterTuningData["realm_ai"]["behavior_name"]), width=400, hint="unity game project name")
                     max_steps = dpg.add_input_int(label="max_steps", default_value=int(hyperParameterTuningData["mlagents"]["default_settings"]["max_steps"]), step=1000, min_value=1, max_value=1e9)
                     dpg.add_spacer(height=25)
 
                     with dpg.group(horizontal=True):
-                        dpg.add_button(label="Restore Defaults", callback=restore_config, user_data=[env_path, behavior_name, max_steps], small=True)
+                        dpg.add_button(label="Restore Defaults", callback=restore_hyperparameter_config, user_data=[env_path, behavior_name, max_steps], small=True)
                         dpg.add_spacer(width=8)
-                        dpg.add_button(label="Save Tuning Configuration", callback=edit_and_create_config, user_data=[env_path, behavior_name, max_steps, config_file_name], small=True)
+                        dpg.add_button(label="Save Tuning Configuration", callback=edit_and_create_hyperparameter_config, user_data=[env_path, behavior_name, max_steps, hyperparameter_config_file_name], small=True)
                         dpg.add_spacer(width=8)
-                        dpg.add_button(label="Start Hyperparameter Tuning and Training", callback=prompt_show_config, user_data=[config_file_to_run], small=True)
+                        dpg.add_button(label="Start Hyperparameter Tuning and Training", callback=prompt_show_hyperparameter_config, user_data=[hyperparameter_config_file_to_run], small=True)
 
                 # Advanced Tab
                 with dpg.tab(label="Advanced"):
