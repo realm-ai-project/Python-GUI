@@ -201,7 +201,7 @@ def run_tune_and_training(sender, app_data, user_data):
 
 def startGUI():
     dpg.create_context()
-    dpg.create_viewport(title="REALM-AI", width=GLOBAL_WIDTH, height=GLOBAL_HEIGHT)
+    dpg.create_viewport(title="REALM_AI", width=GLOBAL_WIDTH, height=GLOBAL_HEIGHT)
     dpg.set_global_font_scale(GLOBAL_FONT_SIZE)
 
     # Themes
@@ -211,6 +211,13 @@ def startGUI():
             dpg.add_theme_color(dpg.mvThemeCol_ButtonActive, [0, 0, 0, 0])
             dpg.add_theme_color(dpg.mvThemeCol_ButtonHovered, [29, 151, 236, 25])
             dpg.add_theme_color(dpg.mvThemeCol_Text, [29, 151, 236])
+
+    # Able to browse previous runs and files
+    with dpg.file_dialog(default_path="", directory_selector=False, show=False, id="file_dialog_id", height=150):
+        dpg.add_file_extension(".*") # for any file - make it white 
+        dpg.add_file_extension("", color=(255, 165, 0, 255)) # directories = orange
+        dpg.add_file_extension(".yaml", color=(255, 0, 0, 255), custom_text="[Configuration]") # configuration files = red
+        dpg.add_file_extension(".py", color=(0, 255, 0, 255), custom_text="[Python]") # python files = green
 
     # Tuner Prompt
     with dpg.window(label="Hyperparameter Tuning and Training", modal=True, pos=[GLOBAL_WIDTH/6, GLOBAL_HEIGHT/3] ,id="prompt", show=False):
@@ -227,7 +234,17 @@ def startGUI():
 
     # Main Window
     with dpg.window(label="Training Manager", width=GLOBAL_WIDTH-15, height=GLOBAL_HEIGHT-50, no_collapse=True, no_close=True):        
-         
+
+        # Introduction
+        with dpg.group(horizontal=True):
+            dpg.add_loading_indicator(circle_count=4)
+            with dpg.group():
+                dpg.add_text('Welcome to REALM_AI Training Manager!')
+                with dpg.group(horizontal=True):
+                    dpg.add_text("You can browse your existing training runs here: ")
+                    dpg.add_button(label="Previous Runs", callback=lambda: dpg.show_item("file_dialog_id"))
+        dpg.add_spacer(height=10)
+
         # ML-Agents Window
         with dpg.collapsing_header(label="ML-Agents Training", default_open=showMlAgents):
             dpg.add_text("Edit the values, press save, and then start training!", color=[232,163,33])
