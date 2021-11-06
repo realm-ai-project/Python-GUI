@@ -20,10 +20,14 @@ hyperParameterTuningData = {}
 defaultHyperParameterTuningData = {}
 allHyperParameterTuningConfigFiles = []
 
-# Global Width, Global Height
+# Global Window Variables
 GLOBAL_WIDTH = 800
 GLOBAL_HEIGHT = 600
 GLOBAL_FONT_SIZE = 1.15
+
+# Master Configuration Files
+MASTER_MLAGENTS_FILE = "ppo.yaml"
+MASTER_HYPERPARAMETERS_FILE = "bayes.yaml"
 
 def loadMlAgentsConfig(mlAgentsConfigFile):
     with open(mlAgentsConfigFile, 'r') as f:
@@ -108,19 +112,49 @@ def restore_hyperparameter_config(sender, app_data, user_data):
     dpg.set_value(user_data[1], hyperParameterTuningData["realm_ai"]["behavior_name"])
     dpg.set_value(user_data[2], hyperParameterTuningData["mlagents"]["default_settings"]["max_steps"])
 
-# https://dearpygui.readthedocs.io/en/latest/tutorials/item-usage.html?highlight=user_data#callbacks
-"""
-    user_data[0] = env_path
-    user_data[1] = behavior_name
-    user_data[2] = max_steps
-    user_data[3] = hyperparameter_config_file_name
+def edit_and_create_mlagents_config(sender, app_data, user_data):
+    print("ml-agents configuration saved") # debugging log
 
-    ** we can keep adding to this list
-"""
+    # Overwrite existing ml-agents config file
+    mlAgentsData["hyperparameters"]["batch_size"] = dpg.get_value(user_data[0])
+    mlAgentsData["hyperparameters"]["buffer_size"] = dpg.get_value(user_data[1])
+    mlAgentsData["hyperparameters"]["learning_rate"] = dpg.get_value(user_data[2])
+    mlAgentsData["hyperparameters"]["beta"] = dpg.get_value(user_data[3])
+    mlAgentsData["hyperparameters"]["epsilon"] = dpg.get_value(user_data[4])
+    mlAgentsData["hyperparameters"]["lambd"] = dpg.get_value(user_data[5])
+    mlAgentsData["hyperparameters"]["num_epoch"] = dpg.get_value(user_data[6])
+    mlAgentsData["hyperparameters"]["learning_rate_schedule"] = dpg.get_value(user_data[7])
+
+    mlAgentsData["network_settings"]["normalize"] = dpg.get_value(user_data[8])
+    mlAgentsData["network_settings"]["hidden_units"] = int(dpg.get_value(user_data[9]))
+    mlAgentsData["network_settings"]["num_layers"] = dpg.get_value(user_data[10])
+
+    mlAgentsData["reward_signals"]["extrinsic"]["gamma"] = dpg.get_value(user_data[11])
+    mlAgentsData["reward_signals"]["extrinsic"]["strength"] = dpg.get_value(user_data[12])
+
+    mlAgentsData["keep_checkpoints"] = dpg.get_value(user_data[13])
+    mlAgentsData["max_steps"] = dpg.get_value(user_data[14])
+    mlAgentsData["time_horizon"] = dpg.get_value(user_data[15])
+    mlAgentsData["summary_freq"] = dpg.get_value(user_data[16])
+    mlAgentsData["threaded"] = dpg.get_value(user_data[17])
+
+    reformattedMlAgentsData = {}
+    reformattedMlAgentsData["default_settings"] = mlAgentsData
+
+    if len(dpg.get_value(user_data[18])) != 0 and dpg.get_value(user_data[18]) != ".yaml":
+        newConfigFile = "ml-agents-configs/" + dpg.get_value(user_data[18])
+    else:
+        newConfigFile = "ml-agents-configs/config.yaml"
+
+    with open(newConfigFile, 'w') as outfile:
+        yaml.dump(reformattedMlAgentsData, outfile, sort_keys=False)
+
+    print("new ml-agents configuration created") # debugging log
+
 def edit_and_create_hyperparameter_config(sender, app_data, user_data):
-    print("configuration saved") # debugging log
+    print("hyperparameter configuration saved") # debugging log
 
-    # Overwrite existing config file
+    # Overwrite existing hyperparameter config file
     hyperParameterTuningData["mlagents"]["env_settings"]["env_path"] = dpg.get_value(user_data[0])
     hyperParameterTuningData["realm_ai"]["behavior_name"] = dpg.get_value(user_data[1])
     hyperParameterTuningData["mlagents"]["default_settings"]["max_steps"] = int(dpg.get_value(user_data[2]))
@@ -133,7 +167,7 @@ def edit_and_create_hyperparameter_config(sender, app_data, user_data):
     with open(newConfigFile, 'w') as outfile:
         yaml.dump(hyperParameterTuningData, outfile, sort_keys=False)
 
-    print("new configuration created") # debugging log
+    print("new hyperparameter configuration created") # debugging log
 
 def prompt_show_hyperparameter_config(sender, app_data, user_data):
     # Get all possible config files in current directory to show up
@@ -251,12 +285,17 @@ def startGUI():
             _help("Number of experiences that needs to be collected before generating/displaying training stats")
             threaded = dpg.add_checkbox(label="threaded", default_value=bool(mlAgentsData["threaded"]))
             _help("Allow environments to step while updating the model. This might result in a training speedup, especially when using SAC. For best performance, set to false when using self-play")
+            
+            dpg.add_spacer(height=3)
+            dpg.add_text("Configuration File Name", color=[137,207,240])
+            mlagents_config_file_name = dpg.add_input_text(label="ml-agents_config_file_name", default_value=".yaml", width=400, hint="new config file name")
+
             dpg.add_spacer(height=20)
 
             with dpg.group(horizontal=True):
                 dpg.add_button(label="Restore Defaults", callback=restore_ml_config, user_data=[batch_size, buffer_size, learning_rate, beta, epsilon, lambd, num_epoch, learning_rate_schedule, normalize, hidden_units, num_layers, gamma, strength, keep_checkpoints, ml_max_steps, time_horizon, summary_freq, threaded], small=True)
                 dpg.add_spacer(width=8)
-                dpg.add_button(label="Save ML-Agents Configuration", callback=edit_and_create_hyperparameter_config, small=True)
+                dpg.add_button(label="Save ML-Agents Configuration", user_data=[batch_size, buffer_size, learning_rate, beta, epsilon, lambd, num_epoch, learning_rate_schedule, normalize, hidden_units, num_layers, gamma, strength, keep_checkpoints, ml_max_steps, time_horizon, summary_freq, threaded, mlagents_config_file_name], callback=edit_and_create_mlagents_config, small=True)
                 dpg.add_spacer(width=8)
                 dpg.add_button(label="Start Training", callback=prompt_show_hyperparameter_config, small=True)
                 dpg.add_spacer(height=30)
@@ -303,11 +342,11 @@ if __name__ == '__main__':
     parser.add_argument('--hyperparameter', action='store_true')
 
     # ML Agents Data
-    mlAgentsConfigFile = "ml-agents-configs/ppo.yaml"
+    mlAgentsConfigFile = "ml-agents-configs/" + MASTER_MLAGENTS_FILE
     mlAgentsData = loadMlAgentsConfig(mlAgentsConfigFile)["default_settings"]
 
     # Hyper Parameter Data
-    hyperParameterConfigFile = "hyperparameter-configs/bayes.yaml"
+    hyperParameterConfigFile = "hyperparameter-configs/" + MASTER_HYPERPARAMETERS_FILE
     hyperParameterTuningData = loadHyperParameterConfig(hyperParameterConfigFile)
 
     # Override loaded in data with the command line arguments
