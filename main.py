@@ -50,8 +50,55 @@ def _hyperlink(text, address):
     b = dpg.add_button(label=text, callback=lambda:webbrowser.open(address))
     dpg.bind_item_theme(b, "__demo_hyperlinkTheme")
 
+def restore_ml_config(sender, app_data, user_data):
+    print("ml configuration restored") # debugging log
+
+    mlAgentsData["hyperparameters"]["batch_size"] = int(defaultMlAgentsData["hyperparameters"]["batch_size"])
+    mlAgentsData["hyperparameters"]["buffer_size"] = int(defaultMlAgentsData["hyperparameters"]["buffer_size"])
+    mlAgentsData["hyperparameters"]["learning_rate"] = float(defaultMlAgentsData["hyperparameters"]["learning_rate"])
+    mlAgentsData["hyperparameters"]["beta"] = float(defaultMlAgentsData["hyperparameters"]["beta"])
+    mlAgentsData["hyperparameters"]["epsilon"] = float(defaultMlAgentsData["hyperparameters"]["epsilon"])
+    mlAgentsData["hyperparameters"]["lambd"] = float(defaultMlAgentsData["hyperparameters"]["lambd"])
+    mlAgentsData["hyperparameters"]["num_epoch"] = float(defaultMlAgentsData["hyperparameters"]["num_epoch"])
+    mlAgentsData["hyperparameters"]["learning_rate_schedule"] = defaultMlAgentsData["hyperparameters"]["learning_rate_schedule"]
+    
+    mlAgentsData["network_settings"]["normalize"] = defaultMlAgentsData["network_settings"]["normalize"]
+    mlAgentsData["network_settings"]["hidden_units"] = int(defaultMlAgentsData["network_settings"]["hidden_units"])
+    mlAgentsData["network_settings"]["num_layers"] = int(defaultMlAgentsData["network_settings"]["num_layers"])
+
+    mlAgentsData["reward_signals"]["extrinsic"]["gamma"] = float(defaultMlAgentsData["reward_signals"]["extrinsic"]["gamma"])
+    mlAgentsData["reward_signals"]["extrinsic"]["strength"] = float(defaultMlAgentsData["reward_signals"]["extrinsic"]["strength"])
+
+    mlAgentsData["keep_checkpoints"] = int(defaultMlAgentsData["keep_checkpoints"])
+    mlAgentsData["max_steps"] = int(float(defaultMlAgentsData["max_steps"]))
+    mlAgentsData["time_horizon"] = int(defaultMlAgentsData["time_horizon"])
+    mlAgentsData["summary_freq"] = int(defaultMlAgentsData["summary_freq"])
+    mlAgentsData["threaded"] = defaultMlAgentsData["threaded"]
+
+    dpg.set_value(user_data[0], mlAgentsData["hyperparameters"]["batch_size"])
+    dpg.set_value(user_data[1], mlAgentsData["hyperparameters"]["buffer_size"])
+    dpg.set_value(user_data[2], mlAgentsData["hyperparameters"]["learning_rate"])
+    dpg.set_value(user_data[3], mlAgentsData["hyperparameters"]["beta"])
+    dpg.set_value(user_data[4], mlAgentsData["hyperparameters"]["epsilon"])
+    dpg.set_value(user_data[5], mlAgentsData["hyperparameters"]["lambd"])
+    dpg.set_value(user_data[6], mlAgentsData["hyperparameters"]["num_epoch"])
+    dpg.set_value(user_data[7], mlAgentsData["hyperparameters"]["learning_rate_schedule"])
+
+    dpg.set_value(user_data[8], mlAgentsData["network_settings"]["normalize"])
+    dpg.set_value(user_data[9], mlAgentsData["network_settings"]["hidden_units"])
+    dpg.set_value(user_data[10], mlAgentsData["network_settings"]["num_layers"])
+
+    dpg.set_value(user_data[11], mlAgentsData["reward_signals"]["extrinsic"]["gamma"])
+    dpg.set_value(user_data[12], mlAgentsData["reward_signals"]["extrinsic"]["strength"])
+
+    dpg.set_value(user_data[13], mlAgentsData["keep_checkpoints"])
+    dpg.set_value(user_data[14], mlAgentsData["max_steps"])
+    dpg.set_value(user_data[15], mlAgentsData["time_horizon"])
+    dpg.set_value(user_data[16], mlAgentsData["summary_freq"])
+    dpg.set_value(user_data[17], mlAgentsData["threaded"])
+
 def restore_hyperparameter_config(sender, app_data, user_data):
-    print("configuration restored") # debugging log
+    print("hyperparameter configuration restored") # debugging log
 
     hyperParameterTuningData["mlagents"]["env_settings"]["env_path"] = defaultHyperParameterTuningData["mlagents"]["env_settings"]["env_path"]
     hyperParameterTuningData["realm_ai"]["behavior_name"] = defaultHyperParameterTuningData["realm_ai"]["behavior_name"]
@@ -106,7 +153,6 @@ def prompt_show_hyperparameter_config(sender, app_data, user_data):
     dpg.configure_item(user_data[0], items=allHyperParameterTuningConfigFiles)
     dpg.configure_item("prompt", show=True)
 
-
 """
     user_data[0] = hyperparameter_config_file_to_run
 
@@ -148,67 +194,67 @@ def startGUI():
     # Main Window
     with dpg.window(label="Training Manager", width=GLOBAL_WIDTH-15, height=GLOBAL_HEIGHT-50, no_collapse=True, no_close=True):        
          
-        # ML Agents Window
-        with dpg.collapsing_header(label="ML Agents Training", default_open=showMlAgents):
+        # ML-Agents Window
+        with dpg.collapsing_header(label="ML-Agents Training", default_open=showMlAgents):
             dpg.add_text("Edit the values, press save, and then start training!", color=[232,163,33])
             with dpg.group(horizontal=True):
-                dpg.add_text("For more information about the training configuration files", color=[232,163,33])
+                dpg.add_text("For more information about the ml-agents training configuration files", color=[232,163,33])
                 _hyperlink("click here", "https://github.com/Unity-Technologies/ml-agents/blob/main/docs/Training-Configuration-File.md")
             dpg.add_spacer(height=10)
             dpg.add_separator()
 
             dpg.add_text("Hyperparameters", color=[137,207,240])
-            dpg.add_input_int(label="batch_size", default_value=int(mlAgentsData["hyperparameters"]["batch_size"]), step=128, min_value=1, min_clamped=True)
+            batch_size = dpg.add_input_int(label="batch_size", default_value=int(mlAgentsData["hyperparameters"]["batch_size"]), step=128, min_value=1, min_clamped=True)
             _help("Typical range (Continuous PPO): 512 - 5120")
-            dpg.add_input_int(label="buffer_size", default_value=int(mlAgentsData["hyperparameters"]["buffer_size"]), step=128, min_value=32, min_clamped=True)
+            buffer_size = dpg.add_input_int(label="buffer_size", default_value=int(mlAgentsData["hyperparameters"]["buffer_size"]), step=128, min_value=32, min_clamped=True)
             _help("Typical range (PPO): 2048 - 409600")
-            dpg.add_input_float(label="learning_rate", default_value=float(mlAgentsData["hyperparameters"]["learning_rate"]), format="%e", min_value=1e-9, min_clamped=True, max_value=0.99999, max_clamped=True)
+            learning_rate = dpg.add_input_float(label="learning_rate", default_value=float(mlAgentsData["hyperparameters"]["learning_rate"]), format="%e", min_value=1e-9, min_clamped=True, max_value=0.99999, max_clamped=True)
             _help("Typical range: 1e-5 - 1e-3")
-            dpg.add_input_float(label="beta", default_value=float(mlAgentsData["hyperparameters"]["beta"]), format="%e", min_value=1e-9, min_clamped=True, max_value=0.49999, max_clamped=True)
+            beta = dpg.add_input_float(label="beta", default_value=float(mlAgentsData["hyperparameters"]["beta"]), format="%e", min_value=1e-9, min_clamped=True, max_value=0.49999, max_clamped=True)
             _help("Typical range: 1e-4 - 1e-2")
-            dpg.add_input_float(label="epsilon", default_value=float(mlAgentsData["hyperparameters"]["epsilon"]), min_value=1e-9, min_clamped=True, max_value=0.99999, max_clamped=True)
+            epsilon = dpg.add_input_float(label="epsilon", default_value=float(mlAgentsData["hyperparameters"]["epsilon"]), min_value=1e-9, min_clamped=True, max_value=0.99999, max_clamped=True)
             _help("Typical range: 0.1 - 0.3")
-            dpg.add_input_float(label="lambda", default_value=float(mlAgentsData["hyperparameters"]["lambd"]), min_value=1e-9, min_clamped=True, max_value=0.99999, max_clamped=True)
+            lambd = dpg.add_input_float(label="lambda", default_value=float(mlAgentsData["hyperparameters"]["lambd"]), min_value=1e-9, min_clamped=True, max_value=0.99999, max_clamped=True)
             _help("Typical range: 0.9 - 0.95")
-            dpg.add_slider_int(label="num_epoch", default_value=float(mlAgentsData["hyperparameters"]["num_epoch"]), min_value=1, max_value=15)
+            num_epoch = dpg.add_slider_int(label="num_epoch", default_value=float(mlAgentsData["hyperparameters"]["num_epoch"]), min_value=1, max_value=15)
             _help("Typical range: 3 - 10")
             lr_schedule = ["linear", "constant"]
-            dpg.add_combo(label="learning_rate_schedule", items=lr_schedule, default_value=lr_schedule[0])
+            learning_rate_schedule = dpg.add_combo(label="learning_rate_schedule", items=lr_schedule, default_value=lr_schedule[0])
             _help("linear decays the learning_rate linearly, constant keeps the learning_rate constant")
             
             dpg.add_spacer(height=3)
             dpg.add_text("Network Settings", color=[137,207,240])
-            dpg.add_checkbox(label="normalize", default_value=bool(mlAgentsData["network_settings"]["normalize"]))
+            normalize = dpg.add_checkbox(label="normalize", default_value=bool(mlAgentsData["network_settings"]["normalize"]))
             _help("Whether normalization is applied to the vector observation inputs")
             hidden_unit_values = [64, 128, 256, 512, 1024]
-            dpg.add_combo(label="hidden_units", items=hidden_unit_values, default_value=hidden_unit_values[0])
+            hidden_units = dpg.add_combo(label="hidden_units", items=hidden_unit_values, default_value=hidden_unit_values[0])
             _help("Typical range: 32 - 512")
-            dpg.add_slider_int(label="num_layers", default_value=int(mlAgentsData["network_settings"]["num_layers"]), min_value=1, max_value=3)
+            num_layers = dpg.add_slider_int(label="num_layers", default_value=int(mlAgentsData["network_settings"]["num_layers"]), min_value=1, max_value=3)
             _help("Typical range: 1 - 3")
 
             dpg.add_spacer(height=3)
             dpg.add_text("Reward Signals")
-            dpg.add_input_float(label="gamma", default_value=float(mlAgentsData["reward_signals"]["extrinsic"]["gamma"]), min_value=1e-9, min_clamped=True, max_value=0.99999, max_clamped=True)
+            gamma = dpg.add_input_float(label="gamma", default_value=float(mlAgentsData["reward_signals"]["extrinsic"]["gamma"]), min_value=1e-9, min_clamped=True, max_value=0.99999, max_clamped=True)
             _help("Typical range: 0.8 - 0.995")
-            dpg.add_input_float(label="strength", default_value=float(mlAgentsData["reward_signals"]["extrinsic"]["strength"]), min_value=1e-9, min_clamped=True, max_value=0.99999, max_clamped=True)
+            strength = dpg.add_input_float(label="strength", default_value=float(mlAgentsData["reward_signals"]["extrinsic"]["strength"]), min_value=1e-9, min_clamped=True, max_value=0.99999, max_clamped=True)
             _help("Factor by which to multiply the reward given by the environment.")
 
             dpg.add_spacer(height=3)
             dpg.add_text("Other Settings", color=[137,207,240])
-            dpg.add_slider_int(label="keep_checkpoints", default_value=int(mlAgentsData["keep_checkpoints"]), min_value=1, max_value=10)
+            keep_checkpoints = dpg.add_slider_int(label="keep_checkpoints", default_value=int(mlAgentsData["keep_checkpoints"]), min_value=1, max_value=10)
             _help("The maximum number of model checkpoints to keep")
-            dpg.add_input_int(label="max_steps", default_value=float(mlAgentsData["max_steps"]), step=128, min_value=1, min_clamped=True)
+            ml_max_steps = dpg.add_input_int(label="max_steps", default_value=float(mlAgentsData["max_steps"]), step=128, min_value=1, min_clamped=True)
             _help("Typical range: 5e5 - 1e7")
-            dpg.add_input_int(label="time_horizon", default_value=int(mlAgentsData["time_horizon"]), step=128, min_value=1, min_clamped=True)
+            time_horizon = dpg.add_input_int(label="time_horizon", default_value=int(mlAgentsData["time_horizon"]), step=128, min_value=1, min_clamped=True)
             _help("Typical range: 32 - 2048")
-            dpg.add_input_int(label="summary_freq", default_value=int(mlAgentsData["summary_freq"]), step=128, min_value=1, min_clamped=True)
+            summary_freq = dpg.add_input_int(label="summary_freq", default_value=int(mlAgentsData["summary_freq"]), step=128, min_value=1, min_clamped=True)
             _help("Number of experiences that needs to be collected before generating/displaying training stats")
-            dpg.add_checkbox(label="threaded", default_value=bool(mlAgentsData["threaded"]))
+            threaded = dpg.add_checkbox(label="threaded", default_value=bool(mlAgentsData["threaded"]))
             _help("Allow environments to step while updating the model. This might result in a training speedup, especially when using SAC. For best performance, set to false when using self-play")
             dpg.add_spacer(height=20)
 
             with dpg.group(horizontal=True):
-                dpg.add_button(label="Restore Defaults", callback=restore_hyperparameter_config, small=True)
+                dpg.add_button(label="Restore Defaults", callback=restore_ml_config, user_data=[batch_size, buffer_size, learning_rate, beta, epsilon, lambd, num_epoch, learning_rate_schedule, normalize, hidden_units, num_layers, gamma, strength, keep_checkpoints, ml_max_steps, time_horizon, summary_freq, threaded], small=True)
                 dpg.add_spacer(width=8)
                 dpg.add_button(label="Save Configuration", callback=edit_and_create_hyperparameter_config, small=True)
                 dpg.add_spacer(width=8)
