@@ -256,7 +256,7 @@ def startGUI():
             with dpg.group(horizontal=True):
                 dpg.add_button(label="Restore Defaults", callback=restore_ml_config, user_data=[batch_size, buffer_size, learning_rate, beta, epsilon, lambd, num_epoch, learning_rate_schedule, normalize, hidden_units, num_layers, gamma, strength, keep_checkpoints, ml_max_steps, time_horizon, summary_freq, threaded], small=True)
                 dpg.add_spacer(width=8)
-                dpg.add_button(label="Save Configuration", callback=edit_and_create_hyperparameter_config, small=True)
+                dpg.add_button(label="Save ML-Agents Configuration", callback=edit_and_create_hyperparameter_config, small=True)
                 dpg.add_spacer(width=8)
                 dpg.add_button(label="Start Training", callback=prompt_show_hyperparameter_config, small=True)
                 dpg.add_spacer(height=30)
@@ -278,7 +278,7 @@ def startGUI():
                     with dpg.group(horizontal=True):
                         dpg.add_button(label="Restore Defaults", callback=restore_hyperparameter_config, user_data=[env_path, behavior_name, max_steps], small=True)
                         dpg.add_spacer(width=8)
-                        dpg.add_button(label="Save Tuning Configuration", callback=edit_and_create_hyperparameter_config, user_data=[env_path, behavior_name, max_steps, hyperparameter_config_file_name], small=True)
+                        dpg.add_button(label="Save Hyperparameter Configuration", callback=edit_and_create_hyperparameter_config, user_data=[env_path, behavior_name, max_steps, hyperparameter_config_file_name], small=True)
                         dpg.add_spacer(width=8)
                         dpg.add_button(label="Start Hyperparameter Tuning and Training", callback=prompt_show_hyperparameter_config, user_data=[hyperparameter_config_file_to_run], small=True)
 
