@@ -207,21 +207,21 @@ def prompt_show_ml_agents_config(sender, app_data, user_data):
     dpg.configure_item("mlagents_prompt", show=True)
 
 
-# user_data[0] = hyperparameter_config_file_to_run
+# user_data[0] = mlagents_config_file_to_run
 def run_training(sender, app_data, user_data):
     mlagents_config_file_to_run = dpg.get_value(user_data[0])
     dpg.configure_item("mlagents_prompt", show=False)
 
-    config_path = os.path.dirname(__file__) + "/" + mlagents_config_file_to_run
+    config_path = "\"" + os.path.abspath(os.getcwd()) + "\\ml-agents-configs\\" + mlagents_config_file_to_run + "\""
     runner.runMLagents(config_path, hyperParameterTuningData["realm_ai"]["behavior_name"])
 
 
-# user_data[0] = mlagents_config_file_to_run
+# user_data[0] = hyperparameter_config_file_to_run
 def run_tune_and_training(sender, app_data, user_data):
     hyperparameter_config_file_to_run = dpg.get_value(user_data[0])
     dpg.configure_item("hyperparameter_prompt", show=False)
 
-    config_path = os.path.dirname(__file__) + "/" + hyperparameter_config_file_to_run
+    config_path = "\"" + os.path.abspath(os.getcwd()) + "\\hyperparameter-configs\\" + hyperparameter_config_file_to_run + "\""
     runner.runTunerAndMlAgents(config_path, hyperParameterTuningData["mlagents"]["env_settings"]["env_path"], hyperParameterTuningData["realm_ai"]["behavior_name"])
 
 def startGUI():
