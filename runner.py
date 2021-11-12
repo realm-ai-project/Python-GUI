@@ -4,17 +4,14 @@ import shutil
 import subprocess
 
 def runTunerAndMlAgents(configPath: str, envPath: str, behaviorName: str):
-    folder = "results/Tune_Train/" + behaviorName + "-" + datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    os.makedirs(folder)
+    now = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
     configPathParameter = "--config-path=" + configPath
     envPathParameter = "--env-path=\"" + envPath + "\""
     behaviorNameParameter = "--behavior-name=" + behaviorName
     print("realm-tune %s %s %s" % (configPathParameter, envPathParameter, behaviorNameParameter))
-
-    # Ken uncomment and test, check if the command I output to std out above is correct
-    # subprocess.run(["realm-tune", configPathParameter, envPathParameter, behaviorNameParameter])
     os.system("realm-tune %s %s %s" % (configPathParameter, envPathParameter, behaviorNameParameter))
+    # shutil.move("results/" + behaviorName + "-" + now, "results/Train")
 
 """
 mlagents-learn <trainer-config-file> --env=<env_name> --run-id=<run-identifier>
@@ -27,13 +24,8 @@ https://github.com/Unity-Technologies/ml-agents/blob/main/docs/Training-ML-Agent
 """
 def runMLagents(configPath: str, behaviorName: str):
     now = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    # folder = "results/Train/" + behaviorName + "-" + now
-    # os.makedirs(folder)
 
     behaviorNameParameter = "--run-id=" + behaviorName + "-" + now
     print("mlagents-learn %s %s --force" % (configPath, behaviorNameParameter))
-
-    # Cliff uncomment and test, check if the command I output to std out above is correct
-    # subprocess.run(["mlagents-learn", configPath, behaviorNameParameter, "--force"])
     os.system("mlagents-learn %s %s --force" % (configPath, behaviorNameParameter))
     shutil.move("results/" + behaviorName + "-" + now, "results/Train")
