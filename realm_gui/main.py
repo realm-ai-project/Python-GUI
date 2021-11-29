@@ -22,8 +22,8 @@ defaultHyperParameterTuningData = {}
 allHyperParameterTuningConfigFiles = []
 
 # Global Window Variables
-GLOBAL_WIDTH = 800
-GLOBAL_HEIGHT = 600
+GLOBAL_WIDTH = 1000
+GLOBAL_HEIGHT = 800
 GLOBAL_FONT_SIZE = 1.15
 
 # Master Configuration Files
