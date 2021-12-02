@@ -1,34 +1,51 @@
 import argparse
 import copy
 import os
-import re
-import runner
+import shutil
 import webbrowser
+from datetime import datetime
+
 import dearpygui.dearpygui as dpg
 import yaml
-
-# Display Variables
-showMlAgents = False
-showHyperParameter = False
 
 # ML-Agents Variables
 mlAgentsData = {}
 defaultMlAgentsData = {}
 allMlAgentsConfigFiles = []
+showMlAgents = False
 
 # Hyper Parameter Tuner Variables
 hyperParameterTuningData = {}
 defaultHyperParameterTuningData = {}
 allHyperParameterTuningConfigFiles = []
+showHyperParameter = False
 
-# Global Window Variables
-GLOBAL_WIDTH = 1000
-GLOBAL_HEIGHT = 800
-GLOBAL_FONT_SIZE = 1.15
+def runTunerAndMlAgents(configPath: str, envPath: str, behaviorName: str):
+    now = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
-# Master Configuration Files
-MASTER_MLAGENTS_FILE = "ppo.yaml"
-MASTER_HYPERPARAMETERS_FILE = "bayes.yaml"
+    configPathParameter = "--config-path=" + configPath
+    envPathParameter = "--env-path=\"" + envPath + "\""
+    behaviorNameParameter = "--behavior-name=" + behaviorName
+    print("realm-tune %s %s %s" % (configPathParameter, envPathParameter, behaviorNameParameter))
+    os.system("realm-tune %s %s %s" % (configPathParameter, envPathParameter, behaviorNameParameter))
+    # shutil.move("results/" + behaviorName + "-" + now, "results/Train")
+
+"""
+mlagents-learn <trainer-config-file> --env=<env_name> --run-id=<run-identifier>
+
+<trainer-config-file> is the file path of the trainer configuration YAML.
+<env_name>(Optional) is the name (including path) of your Unity executable containing the agents to be trained. If <env_name> is not passed, the training will happen in the Editor.
+<run-identifier> is a unique name you can use to identify the results of your training runs.
+
+https://github.com/Unity-Technologies/ml-agents/blob/main/docs/Training-ML-Agents.md
+"""
+def runMLagents(configPath: str, behaviorName: str):
+    now = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+
+    behaviorNameParameter = "--run-id=" + behaviorName + "-" + now
+    print("mlagents-learn %s %s --force" % (configPath, behaviorNameParameter))
+    os.system("mlagents-learn %s %s --force" % (configPath, behaviorNameParameter))
+    shutil.move("results/" + behaviorName + "-" + now, "results/Train")
 
 def loadMlAgentsConfig(mlAgentsConfigFile):
     with open(mlAgentsConfigFile, 'r') as f:
@@ -56,6 +73,8 @@ def _hyperlink(text, address):
     dpg.bind_item_theme(b, "__demo_hyperlinkTheme")
 
 def restore_ml_config(sender, app_data, user_data):
+    global mlAgentsData, defaultMlAgentsData
+
     print("ml configuration restored") # debugging log
 
     mlAgentsData["hyperparameters"]["batch_size"] = int(defaultMlAgentsData["hyperparameters"]["batch_size"])
@@ -103,6 +122,8 @@ def restore_ml_config(sender, app_data, user_data):
     dpg.set_value(user_data[17], mlAgentsData["threaded"])
 
 def restore_hyperparameter_config(sender, app_data, user_data):
+    global hyperParameterTuningData, defaultHyperParameterTuningData
+
     print("hyperparameter configuration restored") # debugging log
 
     hyperParameterTuningData["mlagents"]["env_settings"]["env_path"] = defaultHyperParameterTuningData["mlagents"]["env_settings"]["env_path"]
@@ -114,6 +135,8 @@ def restore_hyperparameter_config(sender, app_data, user_data):
     dpg.set_value(user_data[2], hyperParameterTuningData["mlagents"]["default_settings"]["max_steps"])
 
 def edit_and_create_mlagents_config(sender, app_data, user_data):
+    global mlAgentsData
+
     print("ml-agents configuration saved") # debugging log
 
     # Overwrite existing ml-agents config file
@@ -143,9 +166,9 @@ def edit_and_create_mlagents_config(sender, app_data, user_data):
     reformattedMlAgentsData["default_settings"] = mlAgentsData
 
     if len(dpg.get_value(user_data[18])) != 0 and dpg.get_value(user_data[18]) != ".yaml":
-        newConfigFile = "ml-agents-configs/" + dpg.get_value(user_data[18])
+        newConfigFile = "realm_gui/ml-agents-configs/" + dpg.get_value(user_data[18])
     else:
-        newConfigFile = "ml-agents-configs/config.yaml"
+        newConfigFile = "realm_gui/ml-agents-configs/config.yaml"
 
     with open(newConfigFile, 'w') as outfile:
         yaml.dump(reformattedMlAgentsData, outfile, sort_keys=False)
@@ -153,6 +176,8 @@ def edit_and_create_mlagents_config(sender, app_data, user_data):
     print("new ml-agents configuration created") # debugging log
 
 def edit_and_create_hyperparameter_config(sender, app_data, user_data):
+    global hyperParameterTuningData
+
     print("hyperparameter configuration saved") # debugging log
 
     # Overwrite existing hyperparameter config file
@@ -161,9 +186,9 @@ def edit_and_create_hyperparameter_config(sender, app_data, user_data):
     hyperParameterTuningData["mlagents"]["default_settings"]["max_steps"] = int(dpg.get_value(user_data[2]))
 
     if len(dpg.get_value(user_data[3])) != 0 and dpg.get_value(user_data[3]) != ".yaml":
-        newConfigFile = "hyperparameter-configs/" + dpg.get_value(user_data[3])
+        newConfigFile = "realm_gui/hyperparameter-configs/" + dpg.get_value(user_data[3])
     else:
-        newConfigFile = "hyperparameter-configs/config.yaml"
+        newConfigFile = "realm_gui/hyperparameter-configs/config.yaml"
 
     with open(newConfigFile, 'w') as outfile:
         yaml.dump(hyperParameterTuningData, outfile, sort_keys=False)
@@ -171,9 +196,11 @@ def edit_and_create_hyperparameter_config(sender, app_data, user_data):
     print("new hyperparameter configuration created") # debugging log
 
 def prompt_show_hyperparameter_config(sender, app_data, user_data):
+    global allHyperParameterTuningConfigFiles
+
     # Get all possible config files in current directory to show up
     allHyperParameterTuningConfigFiles = [] # reset list
-    directory = "hyperparameter-configs/"
+    directory = "realm_gui/hyperparameter-configs/"
     try:
         for file in os.listdir(directory):
             if file.endswith(".yaml"):
@@ -189,9 +216,11 @@ def prompt_show_hyperparameter_config(sender, app_data, user_data):
     dpg.configure_item("hyperparameter_prompt", show=True)
 
 def prompt_show_ml_agents_config(sender, app_data, user_data):
+    global allMlAgentsConfigFiles
+
     # Get all possible config files in current directory to show up
     allMlAgentsConfigFiles = [] # reset list
-    directory = "ml-agents-configs/"
+    directory = "realm_gui/ml-agents-configs/"
     try:
         for file in os.listdir(directory):
             if file.endswith(".yaml"):
@@ -209,22 +238,33 @@ def prompt_show_ml_agents_config(sender, app_data, user_data):
 
 # user_data[0] = mlagents_config_file_to_run
 def run_training(sender, app_data, user_data):
+    global hyperParameterTuningData
+
     mlagents_config_file_to_run = dpg.get_value(user_data[0])
     dpg.configure_item("mlagents_prompt", show=False)
 
     config_path = "\"" + os.path.abspath(os.getcwd()) + "\\ml-agents-configs\\" + mlagents_config_file_to_run + "\""
-    runner.runMLagents(config_path, hyperParameterTuningData["realm_ai"]["behavior_name"])
+    runMLagents(config_path, hyperParameterTuningData["realm_ai"]["behavior_name"])
 
 
 # user_data[0] = hyperparameter_config_file_to_run
 def run_tune_and_training(sender, app_data, user_data):
+    global hyperParameterTuningData
+
     hyperparameter_config_file_to_run = dpg.get_value(user_data[0])
     dpg.configure_item("hyperparameter_prompt", show=False)
 
     config_path = "\"" + os.path.abspath(os.getcwd()) + "\\hyperparameter-configs\\" + hyperparameter_config_file_to_run + "\""
-    runner.runTunerAndMlAgents(config_path, hyperParameterTuningData["mlagents"]["env_settings"]["env_path"], hyperParameterTuningData["realm_ai"]["behavior_name"])
+    runTunerAndMlAgents(config_path, hyperParameterTuningData["mlagents"]["env_settings"]["env_path"], hyperParameterTuningData["realm_ai"]["behavior_name"])
 
 def startGUI():
+    global showMlAgents, showHyperParameter, mlAgentsData, hyperParameterTuningData, allMlAgentsConfigFiles, allHyperParameterTuningConfigFiles
+
+   # Global Window Variables
+    GLOBAL_WIDTH = 1000
+    GLOBAL_HEIGHT = 800
+    GLOBAL_FONT_SIZE = 1.15
+
     dpg.create_context()
     dpg.create_viewport(title="REALM_AI", width=GLOBAL_WIDTH, height=GLOBAL_HEIGHT)
     dpg.set_global_font_scale(GLOBAL_FONT_SIZE)
@@ -388,7 +428,13 @@ def startGUI():
     dpg.start_dearpygui()
     dpg.destroy_context()
 
-if __name__ == '__main__':
+def main():
+    global showMlAgents, showHyperParameter, mlAgentsData, hyperParameterTuningData, defaultMlAgentsData, defaultHyperParameterTuningData
+
+    # Master Configuration Files
+    MASTER_MLAGENTS_FILE = "ppo.yaml"
+    MASTER_HYPERPARAMETERS_FILE = "bayes.yaml"
+    
     # Command line Arguments
     parser = argparse.ArgumentParser(description='Python GUI to launch ML-Agents and Hyperparameter Tuning')
     parser.add_argument('--env-path', type=str, default=None, help="Path to environment. If specified, overrides env_path in the config file")
@@ -397,11 +443,11 @@ if __name__ == '__main__':
     parser.add_argument('--hyperparameter', action='store_true')
 
     # ML Agents Data
-    mlAgentsConfigFile = "ml-agents-configs/" + MASTER_MLAGENTS_FILE
+    mlAgentsConfigFile = "realm_gui/ml-agents-configs/" + MASTER_MLAGENTS_FILE
     mlAgentsData = loadMlAgentsConfig(mlAgentsConfigFile)["default_settings"]
 
     # Hyper Parameter Data
-    hyperParameterConfigFile = "hyperparameter-configs/" + MASTER_HYPERPARAMETERS_FILE
+    hyperParameterConfigFile = "realm_gui/hyperparameter-configs/" + MASTER_HYPERPARAMETERS_FILE
     hyperParameterTuningData = loadHyperParameterConfig(hyperParameterConfigFile)
 
     # Override loaded in data with the command line arguments
@@ -419,3 +465,6 @@ if __name__ == '__main__':
     defaultHyperParameterTuningData = copy.deepcopy(hyperParameterTuningData)
 
     startGUI()
+
+if __name__ == "__main__":
+    main()
