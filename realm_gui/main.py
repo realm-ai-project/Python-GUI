@@ -4,9 +4,12 @@ import os
 import shutil
 import webbrowser
 from datetime import datetime
+from importlib.resources import path
 
 import dearpygui.dearpygui as dpg
 import yaml
+
+from realm_gui import ml_agents_configs, hyperparameter_configs
 
 # ML-Agents Variables
 mlAgentsData = {}
@@ -443,12 +446,12 @@ def main():
     parser.add_argument('--hyperparameter', action='store_true')
 
     # ML Agents Data
-    mlAgentsConfigFile = "realm_gui/ml-agents-configs/" + MASTER_MLAGENTS_FILE
-    mlAgentsData = loadMlAgentsConfig(mlAgentsConfigFile)["default_settings"]
+    with path(ml_agents_configs, MASTER_MLAGENTS_FILE) as mlAgentsConfigFile:
+        mlAgentsData = loadMlAgentsConfig(mlAgentsConfigFile)["default_settings"]
 
     # Hyper Parameter Data
-    hyperParameterConfigFile = "realm_gui/hyperparameter-configs/" + MASTER_HYPERPARAMETERS_FILE
-    hyperParameterTuningData = loadHyperParameterConfig(hyperParameterConfigFile)
+    with path(hyperparameter_configs, MASTER_HYPERPARAMETERS_FILE) as hyperParameterConfigFile:
+        hyperParameterTuningData = loadHyperParameterConfig(hyperParameterConfigFile)
 
     # Override loaded in data with the command line arguments
     args = parser.parse_args()
