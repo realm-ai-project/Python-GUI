@@ -14,7 +14,7 @@ setup(
     ],
     python_requires=">=3.8", # https://github.com/hoffstadt/DearPyGui/issues/1258
     packages=find_packages(include=['realm_gui']),
-    package_data={'realm_gui': ['hyperparameter-configs/*.yaml', 'ml-agents-configs/*.yaml']},
+    package_data={'': ['*.yaml']},
     entry_points={
         "console_scripts": [
             "realm-gui=realm_gui.main:main",
