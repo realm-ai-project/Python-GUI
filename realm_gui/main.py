@@ -9,7 +9,7 @@ from importlib.resources import path
 import dearpygui.dearpygui as dpg
 import yaml
 
-from realm_gui import ml_agents_configs, hyperparameter_configs
+import realm_gui
 
 # ML-Agents Variables
 mlAgentsData = {}
@@ -446,11 +446,13 @@ def main():
     parser.add_argument('--hyperparameter', action='store_true')
 
     # ML Agents Data
-    with path(ml_agents_configs, MASTER_MLAGENTS_FILE) as mlAgentsConfigFile:
+    with path(realm_gui, 'ml_agents_configs') as f:
+        mlAgentsConfigFile = os.path.join(f, MASTER_MLAGENTS_FILE)
         mlAgentsData = loadMlAgentsConfig(mlAgentsConfigFile)["default_settings"]
 
     # Hyper Parameter Data
-    with path(hyperparameter_configs, MASTER_HYPERPARAMETERS_FILE) as hyperParameterConfigFile:
+    with path(realm_gui, 'hyperparameter_configs') as f:
+        hyperParameterConfigFile = os.path.join(f, MASTER_HYPERPARAMETERS_FILE)
         hyperParameterTuningData = loadHyperParameterConfig(hyperParameterConfigFile)
 
     # Override loaded in data with the command line arguments
