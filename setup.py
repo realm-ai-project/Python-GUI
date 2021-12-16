@@ -12,7 +12,7 @@ setup(
         "mlagents",
         # "realm_ai" # to-be-added 
     ],
-    python_requires=">=3.8", # https://github.com/hoffstadt/DearPyGui/issues/1258
+    python_requires=">=3.7", # https://github.com/hoffstadt/DearPyGui/issues/1258
     packages=find_packages(include=['realm_gui']),
     package_data={'': ['*.yaml']},
     entry_points={
