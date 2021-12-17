@@ -1,4 +1,6 @@
 realm_ai:
+  behavior_name: 
+  env_path: 
   algorithm: bayes # or random
   total_trials: 10 # total number of trials (inclusive of warmup_trials)
   warmup_trials: 5 # optional for bayes algorithm, number of "warmup" trials where random hyperparams are used. Default val is 5

@@ -132,11 +132,11 @@ def restore_hyperparameter_config(sender, app_data, user_data):
 
     print("hyperparameter configuration restored") # debugging log
 
-    hyperParameterTuningData["mlagents"]["env_settings"]["env_path"] = defaultHyperParameterTuningData["mlagents"]["env_settings"]["env_path"]
+    hyperParameterTuningData["realm_ai"]["env_path"] = defaultHyperParameterTuningData["realm_ai"]["env_path"] 
     hyperParameterTuningData["realm_ai"]["behavior_name"] = defaultHyperParameterTuningData["realm_ai"]["behavior_name"]
     hyperParameterTuningData["mlagents"]["default_settings"]["max_steps"] = defaultHyperParameterTuningData["mlagents"]["default_settings"]["max_steps"]
 
-    dpg.set_value(user_data[0], hyperParameterTuningData["mlagents"]["env_settings"]["env_path"])
+    dpg.set_value(user_data[0], hyperParameterTuningData["realm_ai"]["env_path"])
     dpg.set_value(user_data[1], hyperParameterTuningData["realm_ai"]["behavior_name"])
     dpg.set_value(user_data[2], hyperParameterTuningData["mlagents"]["default_settings"]["max_steps"])
 
@@ -189,7 +189,7 @@ def edit_and_create_hyperparameter_config(sender, app_data, user_data):
     print("hyperparameter configuration saved") # debugging log
 
     # Overwrite existing hyperparameter config file
-    hyperParameterTuningData["mlagents"]["env_settings"]["env_path"] = dpg.get_value(user_data[0])
+    hyperParameterTuningData["realm_ai"]["env_path"] = dpg.get_value(user_data[0])
     hyperParameterTuningData["realm_ai"]["behavior_name"] = dpg.get_value(user_data[1])
     hyperParameterTuningData["mlagents"]["default_settings"]["max_steps"] = int(dpg.get_value(user_data[2]))
 
@@ -266,7 +266,7 @@ def run_tune_and_training(sender, app_data, user_data):
 
     with path(realm_gui, 'hyperparameter_configs') as f:
         hyperParameterConfigFile = os.path.join(f, hyperparameter_config_file_to_run)
-        runTunerAndMlAgents(hyperParameterConfigFile, hyperParameterTuningData["mlagents"]["env_settings"]["env_path"])
+        runTunerAndMlAgents(hyperParameterConfigFile, hyperParameterTuningData["realm_ai"]["env_path"])
 
 def startGUI():
     global showMlAgents, showHyperParameter, mlAgentsData, hyperParameterTuningData, allMlAgentsConfigFiles, allHyperParameterTuningConfigFiles
@@ -415,7 +415,7 @@ def startGUI():
                     dpg.add_spacer(height=10)
 
                     hyperparameter_config_file_name = dpg.add_input_text(label="hyperparameter_config_file_name", default_value=".yaml", width=400, hint="new config file name")
-                    env_path = dpg.add_input_text(label="env_path", default_value=str(hyperParameterTuningData["mlagents"]["env_settings"]["env_path"]), width=400, hint="env_path of ml-agents")
+                    env_path = dpg.add_input_text(label="env_path", default_value=str(hyperParameterTuningData["realm_ai"]["env_path"]), width=400, hint="env_path of ml-agents")
                     behavior_name = dpg.add_input_text(label="behavior_name", default_value=str(hyperParameterTuningData["realm_ai"]["behavior_name"]), width=400, hint="unity game project name")
                     max_steps = dpg.add_input_int(label="max_steps", default_value=int(hyperParameterTuningData["mlagents"]["default_settings"]["max_steps"]), step=1000, min_value=1, max_value=1e9)
                     dpg.add_spacer(height=25)
@@ -470,7 +470,7 @@ def main():
     if args.behavior_name != None:
         hyperParameterTuningData["realm_ai"]["behavior_name"] = args.behavior_name
     if args.env_path != None:
-        hyperParameterTuningData["mlagents"]["env_settings"]["env_path"] = args.env_path
+        hyperParameterTuningData["realm_ai"]["env_path"] = args.env_path
     if args.mlagents:
         showMlAgents = True
     if args.hyperparameter:
