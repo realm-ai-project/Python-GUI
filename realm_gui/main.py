@@ -86,10 +86,6 @@ def restore_ml_config(sender, app_data, user_data):
     mlAgentsData["hyperparameters"]["batch_size"] = int(defaultMlAgentsData["hyperparameters"]["batch_size"])
     mlAgentsData["hyperparameters"]["buffer_size"] = int(defaultMlAgentsData["hyperparameters"]["buffer_size"])
     mlAgentsData["hyperparameters"]["learning_rate"] = float(defaultMlAgentsData["hyperparameters"]["learning_rate"])
-    mlAgentsData["hyperparameters"]["beta"] = float(defaultMlAgentsData["hyperparameters"]["beta"])
-    mlAgentsData["hyperparameters"]["epsilon"] = float(defaultMlAgentsData["hyperparameters"]["epsilon"])
-    mlAgentsData["hyperparameters"]["lambd"] = float(defaultMlAgentsData["hyperparameters"]["lambd"])
-    mlAgentsData["hyperparameters"]["num_epoch"] = float(defaultMlAgentsData["hyperparameters"]["num_epoch"])
     mlAgentsData["hyperparameters"]["learning_rate_schedule"] = defaultMlAgentsData["hyperparameters"]["learning_rate_schedule"]
     
     mlAgentsData["network_settings"]["normalize"] = defaultMlAgentsData["network_settings"]["normalize"]
@@ -108,35 +104,32 @@ def restore_ml_config(sender, app_data, user_data):
     dpg.set_value(user_data[0], mlAgentsData["hyperparameters"]["batch_size"])
     dpg.set_value(user_data[1], mlAgentsData["hyperparameters"]["buffer_size"])
     dpg.set_value(user_data[2], mlAgentsData["hyperparameters"]["learning_rate"])
-    dpg.set_value(user_data[3], mlAgentsData["hyperparameters"]["beta"])
-    dpg.set_value(user_data[4], mlAgentsData["hyperparameters"]["epsilon"])
-    dpg.set_value(user_data[5], mlAgentsData["hyperparameters"]["lambd"])
-    dpg.set_value(user_data[6], mlAgentsData["hyperparameters"]["num_epoch"])
-    dpg.set_value(user_data[7], mlAgentsData["hyperparameters"]["learning_rate_schedule"])
 
-    dpg.set_value(user_data[8], mlAgentsData["network_settings"]["normalize"])
-    dpg.set_value(user_data[9], mlAgentsData["network_settings"]["hidden_units"])
-    dpg.set_value(user_data[10], mlAgentsData["network_settings"]["num_layers"])
+    dpg.set_value(user_data[3], mlAgentsData["hyperparameters"]["learning_rate_schedule"])
 
-    dpg.set_value(user_data[11], mlAgentsData["reward_signals"]["extrinsic"]["gamma"])
-    dpg.set_value(user_data[12], mlAgentsData["reward_signals"]["extrinsic"]["strength"])
+    dpg.set_value(user_data[4], mlAgentsData["network_settings"]["normalize"])
+    dpg.set_value(user_data[5], mlAgentsData["network_settings"]["hidden_units"])
+    dpg.set_value(user_data[6], mlAgentsData["network_settings"]["num_layers"])
 
-    dpg.set_value(user_data[13], mlAgentsData["keep_checkpoints"])
-    dpg.set_value(user_data[14], mlAgentsData["max_steps"])
-    dpg.set_value(user_data[15], mlAgentsData["time_horizon"])
-    dpg.set_value(user_data[16], mlAgentsData["summary_freq"])
-    dpg.set_value(user_data[17], mlAgentsData["threaded"])
+    dpg.set_value(user_data[7], mlAgentsData["reward_signals"]["extrinsic"]["gamma"])
+    dpg.set_value(user_data[8], mlAgentsData["reward_signals"]["extrinsic"]["strength"])
+
+    dpg.set_value(user_data[9], mlAgentsData["keep_checkpoints"])
+    dpg.set_value(user_data[10], mlAgentsData["max_steps"])
+    dpg.set_value(user_data[11], mlAgentsData["time_horizon"])
+    dpg.set_value(user_data[12], mlAgentsData["summary_freq"])
+    dpg.set_value(user_data[13], mlAgentsData["threaded"])
 
 def restore_hyperparameter_config(sender, app_data, user_data):
     global hyperParameterTuningData, defaultHyperParameterTuningData
 
     print("hyperparameter configuration restored") # debugging log
 
-    hyperParameterTuningData["mlagents"]["env_settings"]["env_path"] = defaultHyperParameterTuningData["mlagents"]["env_settings"]["env_path"]
+    hyperParameterTuningData["realm_ai"]["env_path"] = defaultHyperParameterTuningData["realm_ai"]["env_path"]
     hyperParameterTuningData["realm_ai"]["behavior_name"] = defaultHyperParameterTuningData["realm_ai"]["behavior_name"]
     hyperParameterTuningData["mlagents"]["default_settings"]["max_steps"] = defaultHyperParameterTuningData["mlagents"]["default_settings"]["max_steps"]
 
-    dpg.set_value(user_data[0], hyperParameterTuningData["mlagents"]["env_settings"]["env_path"])
+    dpg.set_value(user_data[0], hyperParameterTuningData["realm_ai"]["env_path"])
     dpg.set_value(user_data[1], hyperParameterTuningData["realm_ai"]["behavior_name"])
     dpg.set_value(user_data[2], hyperParameterTuningData["mlagents"]["default_settings"]["max_steps"])
 
@@ -149,30 +142,27 @@ def edit_and_create_mlagents_config(sender, app_data, user_data):
     mlAgentsData["hyperparameters"]["batch_size"] = dpg.get_value(user_data[0])
     mlAgentsData["hyperparameters"]["buffer_size"] = dpg.get_value(user_data[1])
     mlAgentsData["hyperparameters"]["learning_rate"] = dpg.get_value(user_data[2])
-    mlAgentsData["hyperparameters"]["beta"] = dpg.get_value(user_data[3])
-    mlAgentsData["hyperparameters"]["epsilon"] = dpg.get_value(user_data[4])
-    mlAgentsData["hyperparameters"]["lambd"] = dpg.get_value(user_data[5])
-    mlAgentsData["hyperparameters"]["num_epoch"] = dpg.get_value(user_data[6])
-    mlAgentsData["hyperparameters"]["learning_rate_schedule"] = dpg.get_value(user_data[7])
 
-    mlAgentsData["network_settings"]["normalize"] = dpg.get_value(user_data[8])
-    mlAgentsData["network_settings"]["hidden_units"] = int(dpg.get_value(user_data[9]))
-    mlAgentsData["network_settings"]["num_layers"] = dpg.get_value(user_data[10])
+    mlAgentsData["hyperparameters"]["learning_rate_schedule"] = dpg.get_value(user_data[3])
 
-    mlAgentsData["reward_signals"]["extrinsic"]["gamma"] = dpg.get_value(user_data[11])
-    mlAgentsData["reward_signals"]["extrinsic"]["strength"] = dpg.get_value(user_data[12])
+    mlAgentsData["network_settings"]["normalize"] = dpg.get_value(user_data[4])
+    mlAgentsData["network_settings"]["hidden_units"] = int(dpg.get_value(user_data[5]))
+    mlAgentsData["network_settings"]["num_layers"] = dpg.get_value(user_data[6])
 
-    mlAgentsData["keep_checkpoints"] = dpg.get_value(user_data[13])
-    mlAgentsData["max_steps"] = dpg.get_value(user_data[14])
-    mlAgentsData["time_horizon"] = dpg.get_value(user_data[15])
-    mlAgentsData["summary_freq"] = dpg.get_value(user_data[16])
-    mlAgentsData["threaded"] = dpg.get_value(user_data[17])
+    mlAgentsData["reward_signals"]["extrinsic"]["gamma"] = dpg.get_value(user_data[7])
+    mlAgentsData["reward_signals"]["extrinsic"]["strength"] = dpg.get_value(user_data[8])
+
+    mlAgentsData["keep_checkpoints"] = dpg.get_value(user_data[9])
+    mlAgentsData["max_steps"] = dpg.get_value(user_data[10])
+    mlAgentsData["time_horizon"] = dpg.get_value(user_data[11])
+    mlAgentsData["summary_freq"] = dpg.get_value(user_data[12])
+    mlAgentsData["threaded"] = dpg.get_value(user_data[13])
 
     reformattedMlAgentsData = {}
     reformattedMlAgentsData["default_settings"] = mlAgentsData
 
-    if len(dpg.get_value(user_data[18])) != 0 and dpg.get_value(user_data[18]) != ".yaml":
-        newConfigFile = dpg.get_value(user_data[18])
+    if len(dpg.get_value(user_data[14])) != 0 and dpg.get_value(user_data[14]) != ".yaml":
+        newConfigFile = dpg.get_value(user_data[14])
     else:
         newConfigFile = "config.yaml"
 
@@ -189,7 +179,7 @@ def edit_and_create_hyperparameter_config(sender, app_data, user_data):
     print("hyperparameter configuration saved") # debugging log
 
     # Overwrite existing hyperparameter config file
-    hyperParameterTuningData["mlagents"]["env_settings"]["env_path"] = dpg.get_value(user_data[0])
+    hyperParameterTuningData["realm_ai"]["env_path"] = dpg.get_value(user_data[0])
     hyperParameterTuningData["realm_ai"]["behavior_name"] = dpg.get_value(user_data[1])
     hyperParameterTuningData["mlagents"]["default_settings"]["max_steps"] = int(dpg.get_value(user_data[2]))
 
@@ -266,7 +256,7 @@ def run_tune_and_training(sender, app_data, user_data):
 
     with path(realm_gui, 'hyperparameter_configs') as f:
         hyperParameterConfigFile = os.path.join(f, hyperparameter_config_file_to_run)
-        runTunerAndMlAgents(hyperParameterConfigFile, hyperParameterTuningData["mlagents"]["env_settings"]["env_path"])
+        runTunerAndMlAgents(hyperParameterConfigFile, hyperParameterTuningData["realm_ai"]["env_path"])
 
 def startGUI():
     global showMlAgents, showHyperParameter, mlAgentsData, hyperParameterTuningData, allMlAgentsConfigFiles, allHyperParameterTuningConfigFiles
@@ -350,14 +340,7 @@ def startGUI():
             _help("Typical range (PPO): 2048 - 409600")
             learning_rate = dpg.add_input_float(label="learning_rate", default_value=float(mlAgentsData["hyperparameters"]["learning_rate"]), format="%e", min_value=1e-9, min_clamped=True, max_value=0.99999, max_clamped=True)
             _help("Typical range: 1e-5 - 1e-3")
-            beta = dpg.add_input_float(label="beta", default_value=float(mlAgentsData["hyperparameters"]["beta"]), format="%e", min_value=1e-9, min_clamped=True, max_value=0.49999, max_clamped=True)
-            _help("Typical range: 1e-4 - 1e-2")
-            epsilon = dpg.add_input_float(label="epsilon", default_value=float(mlAgentsData["hyperparameters"]["epsilon"]), min_value=1e-9, min_clamped=True, max_value=0.99999, max_clamped=True)
-            _help("Typical range: 0.1 - 0.3")
-            lambd = dpg.add_input_float(label="lambda", default_value=float(mlAgentsData["hyperparameters"]["lambd"]), min_value=1e-9, min_clamped=True, max_value=0.99999, max_clamped=True)
-            _help("Typical range: 0.9 - 0.95")
-            num_epoch = dpg.add_slider_int(label="num_epoch", default_value=float(mlAgentsData["hyperparameters"]["num_epoch"]), min_value=1, max_value=15)
-            _help("Typical range: 3 - 10")
+
             lr_schedule = ["linear", "constant"]
             learning_rate_schedule = dpg.add_combo(label="learning_rate_schedule", items=lr_schedule, default_value=lr_schedule[0])
             _help("linear decays the learning_rate linearly, constant keeps the learning_rate constant")
@@ -399,9 +382,9 @@ def startGUI():
             dpg.add_spacer(height=20)
 
             with dpg.group(horizontal=True):
-                dpg.add_button(label="Restore Defaults", callback=restore_ml_config, user_data=[batch_size, buffer_size, learning_rate, beta, epsilon, lambd, num_epoch, learning_rate_schedule, normalize, hidden_units, num_layers, gamma, strength, keep_checkpoints, ml_max_steps, time_horizon, summary_freq, threaded], small=True)
+                dpg.add_button(label="Restore Defaults", callback=restore_ml_config, user_data=[batch_size, buffer_size, learning_rate, learning_rate_schedule, normalize, hidden_units, num_layers, gamma, strength, keep_checkpoints, ml_max_steps, time_horizon, summary_freq, threaded], small=True)
                 dpg.add_spacer(width=8)
-                dpg.add_button(label="Save ML-Agents Configuration", user_data=[batch_size, buffer_size, learning_rate, beta, epsilon, lambd, num_epoch, learning_rate_schedule, normalize, hidden_units, num_layers, gamma, strength, keep_checkpoints, ml_max_steps, time_horizon, summary_freq, threaded, mlagents_config_file_name], callback=edit_and_create_mlagents_config, small=True)
+                dpg.add_button(label="Save ML-Agents Configuration", user_data=[batch_size, buffer_size, learning_rate, learning_rate_schedule, normalize, hidden_units, num_layers, gamma, strength, keep_checkpoints, ml_max_steps, time_horizon, summary_freq, threaded, mlagents_config_file_name], callback=edit_and_create_mlagents_config, small=True)
                 dpg.add_spacer(width=8)
                 dpg.add_button(label="Start Training", callback=prompt_show_ml_agents_config, user_data=[mlagents_config_file_to_run], small=True)
                 dpg.add_spacer(height=30)
@@ -415,7 +398,7 @@ def startGUI():
                     dpg.add_spacer(height=10)
 
                     hyperparameter_config_file_name = dpg.add_input_text(label="hyperparameter_config_file_name", default_value=".yaml", width=400, hint="new config file name")
-                    env_path = dpg.add_input_text(label="env_path", default_value=str(hyperParameterTuningData["mlagents"]["env_settings"]["env_path"]), width=400, hint="env_path of ml-agents")
+                    env_path = dpg.add_input_text(label="env_path", default_value=str(hyperParameterTuningData["realm_ai"]["env_path"]), width=400, hint="env_path of ml-agents")
                     behavior_name = dpg.add_input_text(label="behavior_name", default_value=str(hyperParameterTuningData["realm_ai"]["behavior_name"]), width=400, hint="unity game project name")
                     max_steps = dpg.add_input_int(label="max_steps", default_value=int(hyperParameterTuningData["mlagents"]["default_settings"]["max_steps"]), step=1000, min_value=1, max_value=1e9)
                     dpg.add_spacer(height=25)
@@ -470,7 +453,7 @@ def main():
     if args.behavior_name != None:
         hyperParameterTuningData["realm_ai"]["behavior_name"] = args.behavior_name
     if args.env_path != None:
-        hyperParameterTuningData["mlagents"]["env_settings"]["env_path"] = args.env_path
+        hyperParameterTuningData["realm_ai"]["env_path"] = args.env_path
     if args.mlagents:
         showMlAgents = True
     if args.hyperparameter:
