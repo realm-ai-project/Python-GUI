@@ -1,5 +1,5 @@
 realm_ai:
-  behavior_name: 
+  behavior_name: Default
   env_path: 
   algorithm: bayes # or random
   total_trials: 10 # total number of trials (inclusive of warmup_trials)
