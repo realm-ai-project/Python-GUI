@@ -48,10 +48,10 @@ https://github.com/Unity-Technologies/ml-agents/blob/main/docs/Training-ML-Agent
 def runMLagents(configPath: str):
     global resultsDir, runId
 
-    behaviorNameParameter = "--run-id=" + runId
+    runIdParameter = "--run-id=" + runId
     resultsDirParameter = "--results-dir=\"%s\"" % resultsDir
-    print("mlagents-learn \"%s\" %s %s --force" % (configPath, behaviorNameParameter, resultsDirParameter))
-    os.system("mlagents-learn \"%s\" %s %s --force" % (configPath, behaviorNameParameter, resultsDirParameter))
+    print("mlagents-learn \"%s\" %s %s --force" % (configPath, runIdParameter, resultsDirParameter))
+    os.system("mlagents-learn \"%s\" %s %s --force" % (configPath, runIdParameter, resultsDirParameter))
 
 def loadMlAgentsConfig(mlAgentsConfigFile):
     with open(mlAgentsConfigFile, 'r') as f:
@@ -77,6 +77,12 @@ def _help(message):
 def _hyperlink(text, address):
     b = dpg.add_button(label=text, callback=lambda:webbrowser.open(address))
     dpg.bind_item_theme(b, "__demo_hyperlinkTheme")
+
+def _verifyEnvPath(envPath):
+    if envPath is None or envPath == "":
+        return False
+
+    return True
 
 def restore_ml_config(sender, app_data, user_data):
     global mlAgentsData, defaultMlAgentsData
@@ -125,13 +131,15 @@ def restore_hyperparameter_config(sender, app_data, user_data):
 
     print("hyperparameter configuration restored") # debugging log
 
-    hyperParameterTuningData["realm_ai"]["env_path"] = defaultHyperParameterTuningData["realm_ai"]["env_path"]
-    hyperParameterTuningData["realm_ai"]["behavior_name"] = defaultHyperParameterTuningData["realm_ai"]["behavior_name"]
+    hyperParameterTuningData["realm_ai"]["env_path"] = ""
     hyperParameterTuningData["mlagents"]["default_settings"]["max_steps"] = defaultHyperParameterTuningData["mlagents"]["default_settings"]["max_steps"]
+    hyperParameterTuningData["realm_ai"]["total_trials"] = defaultHyperParameterTuningData["realm_ai"]["total_trials"]
+    hyperParameterTuningData["realm_ai"]["algorithm"] = defaultHyperParameterTuningData["realm_ai"]["algorithm"]
 
     dpg.set_value(user_data[0], hyperParameterTuningData["realm_ai"]["env_path"])
-    dpg.set_value(user_data[1], hyperParameterTuningData["realm_ai"]["behavior_name"])
-    dpg.set_value(user_data[2], hyperParameterTuningData["mlagents"]["default_settings"]["max_steps"])
+    dpg.set_value(user_data[1], hyperParameterTuningData["mlagents"]["default_settings"]["max_steps"])
+    dpg.set_value(user_data[2], hyperParameterTuningData["realm_ai"]["total_trials"])
+    dpg.set_value(user_data[3], hyperParameterTuningData["realm_ai"]["algorithm"])
 
 def edit_and_create_mlagents_config(sender, app_data, user_data):
     global mlAgentsData
@@ -176,15 +184,21 @@ def edit_and_create_mlagents_config(sender, app_data, user_data):
 def edit_and_create_hyperparameter_config(sender, app_data, user_data):
     global hyperParameterTuningData
 
-    print("hyperparameter configuration saved") # debugging log
-
     # Overwrite existing hyperparameter config file
     hyperParameterTuningData["realm_ai"]["env_path"] = dpg.get_value(user_data[0])
-    hyperParameterTuningData["realm_ai"]["behavior_name"] = dpg.get_value(user_data[1])
-    hyperParameterTuningData["mlagents"]["default_settings"]["max_steps"] = int(dpg.get_value(user_data[2]))
+    hyperParameterTuningData["mlagents"]["default_settings"]["max_steps"] = int(dpg.get_value(user_data[1]))
+    hyperParameterTuningData["realm_ai"]["total_trials"] = int(dpg.get_value(user_data[2]))
+    hyperParameterTuningData["realm_ai"]["warmup_trials"] = int(dpg.get_value(user_data[2])) // 3
+    hyperParameterTuningData["realm_ai"]["algorithm"] = dpg.get_value(user_data[3])
 
-    if len(dpg.get_value(user_data[3])) != 0 and dpg.get_value(user_data[3]) != ".yaml":
-        newConfigFile = dpg.get_value(user_data[3])
+    if not _verifyEnvPath(hyperParameterTuningData["realm_ai"]["env_path"]):
+        dpg.configure_item("env_path_validation_prompt", show=True)
+        return 
+
+    print("hyperparameter configuration saved") # debugging log
+
+    if len(dpg.get_value(user_data[4])) != 0 and dpg.get_value(user_data[4]) != ".yaml":
+        newConfigFile = dpg.get_value(user_data[4])
     else:
         newConfigFile = "config.yaml"
 
@@ -197,6 +211,10 @@ def edit_and_create_hyperparameter_config(sender, app_data, user_data):
 
 def prompt_show_hyperparameter_config(sender, app_data, user_data):
     global allHyperParameterTuningConfigFiles
+
+    if not _verifyEnvPath(dpg.get_value(user_data[0])):
+        dpg.configure_item("env_path_validation_prompt", show=True)
+        return 
 
     # Get all possible config files in current directory to show up
     allHyperParameterTuningConfigFiles = [] # reset list
@@ -211,8 +229,8 @@ def prompt_show_hyperparameter_config(sender, app_data, user_data):
             print("Error: %s : %s" % (directory, e.strerror))
             allHyperParameterTuningConfigFiles = []
 
-    # Prompt To Appear - user_data[0] = prompt dropdown component which dynamically changes it list contents
-    dpg.configure_item(user_data[0], items=allHyperParameterTuningConfigFiles)
+    # Prompt To Appear - user_data[1] = prompt dropdown component which dynamically changes it list contents
+    dpg.configure_item(user_data[1], items=allHyperParameterTuningConfigFiles)
     dpg.configure_item("hyperparameter_prompt", show=True)
 
 def prompt_show_ml_agents_config(sender, app_data, user_data):
@@ -391,31 +409,33 @@ def startGUI():
 
         # Hyperparameter Tuner Main Window
         with dpg.collapsing_header(label="Hyperparameter Tuning Configuration", default_open=showHyperParameter):
-            with dpg.tab_bar(label="Tab bar"):
-                # Basic Tab
-                with dpg.tab(label="Basic"):
-                    dpg.add_text("Basic Hyperparameter Tuning Configuration Values:\nEdit the values, press save, and then start training!", color=[232,163,33])
-                    dpg.add_spacer(height=10)
+            dpg.add_text("Basic Hyperparameter Tuning Configuration Values:\nEdit the values, press save, and then start training!", color=[232,163,33])
+            dpg.add_spacer(height=10)
+            
+            algorithms = ["bayes", "random"]
+            algorithm = dpg.add_combo(label="algorithm", items=algorithms, default_value=algorithms[0])
+            _help("Do not edit if you are not familar with RL")
+            env_path = dpg.add_input_text(label="env_path", width=400, hint="env_path of ml-agents")
+            _help("Env path of Ml-Agents")
+            max_steps = dpg.add_input_int(label="max_steps", default_value=int(hyperParameterTuningData["mlagents"]["default_settings"]["max_steps"]), step=1000, min_value=1, max_value=1e9)
+            _help("Number of training steps for the full run, performed after the hyperparameter tuning runs")
+            total_trials = dpg.add_input_int(label="total_trials", default_value=int(hyperParameterTuningData["realm_ai"]["total_trials"]), step=1, min_value=1, min_clamped=True)
+            _help("Number of hyperparameter tuning trials")
+            hyperparameter_config_file_name = dpg.add_input_text(label="hyperparameter_config_file_name", default_value=".yaml", width=400, hint="new config file name")
+            dpg.add_spacer(height=25)
 
-                    hyperparameter_config_file_name = dpg.add_input_text(label="hyperparameter_config_file_name", default_value=".yaml", width=400, hint="new config file name")
-                    env_path = dpg.add_input_text(label="env_path", default_value=str(hyperParameterTuningData["realm_ai"]["env_path"]), width=400, hint="env_path of ml-agents")
-                    behavior_name = dpg.add_input_text(label="behavior_name", default_value=str(hyperParameterTuningData["realm_ai"]["behavior_name"]), width=400, hint="unity game project name")
-                    max_steps = dpg.add_input_int(label="max_steps", default_value=int(hyperParameterTuningData["mlagents"]["default_settings"]["max_steps"]), step=1000, min_value=1, max_value=1e9)
-                    dpg.add_spacer(height=25)
+            with dpg.group(horizontal=True):
+                dpg.add_button(label="Restore Defaults", callback=restore_hyperparameter_config, user_data=[env_path, max_steps, total_trials, algorithm], small=True)
+                dpg.add_spacer(width=8)
+                dpg.add_button(label="Save Hyperparameter Configuration", callback=edit_and_create_hyperparameter_config, user_data=[env_path, max_steps, total_trials, algorithm, hyperparameter_config_file_name], small=True)
+                dpg.add_spacer(width=8)
+                dpg.add_button(label="Start Hyperparameter Tuning and Training", callback=prompt_show_hyperparameter_config, user_data=[env_path, hyperparameter_config_file_to_run], small=True)
 
-                    with dpg.group(horizontal=True):
-                        dpg.add_button(label="Restore Defaults", callback=restore_hyperparameter_config, user_data=[env_path, behavior_name, max_steps], small=True)
-                        dpg.add_spacer(width=8)
-                        dpg.add_button(label="Save Hyperparameter Configuration", callback=edit_and_create_hyperparameter_config, user_data=[env_path, behavior_name, max_steps, hyperparameter_config_file_name], small=True)
-                        dpg.add_spacer(width=8)
-                        dpg.add_button(label="Start Hyperparameter Tuning and Training", callback=prompt_show_hyperparameter_config, user_data=[hyperparameter_config_file_to_run], small=True)
-
-                # Advanced Tab
-                with dpg.tab(label="Advanced"):
-                    dpg.add_text("Advanced Hyper Parameter Configuration Values:\nDo not edit if you are not familar with RL. Remember to save!", color=[232,163,33])
-                    dpg.add_spacer(height=10)
-                    alg = ["bayes", "gridsearch"]
-                    algorithm = dpg.add_combo(label="algorithm", items=alg, default_value=alg[0])
+        # Env Path Validation Error Prompt
+        with dpg.window(label="ERROR", modal=True, pos=[GLOBAL_WIDTH/6, GLOBAL_HEIGHT/3] ,id="env_path_validation_prompt", show=False):
+            dpg.add_text("ERROR: env_path can not be empty. It must have a value.")
+            dpg.add_spacer(height=10)
+            dpg.add_button(label="Continue", width=75, callback=lambda: dpg.configure_item("env_path_validation_prompt", show=False))
 
     dpg.setup_dearpygui()
     dpg.show_viewport()
