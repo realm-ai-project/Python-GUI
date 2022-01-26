@@ -169,7 +169,7 @@ def edit_and_create_mlagents_config(sender, app_data, user_data):
     if user_data[15] is not None:
         if 'env_settings' not in mlAgentsData:
             mlAgentsData['env_settings'] = {}
-        mlAgentsData["env_settings"]["env_args"] = f"-ffmpeg-path {user_data[15]}"
+        mlAgentsData["env_settings"]["env_args"] = ["-ffmpeg-path", user_data[15]]
 
     reformattedMlAgentsData = {}
     reformattedMlAgentsData["default_settings"] = mlAgentsData
@@ -199,7 +199,7 @@ def edit_and_create_hyperparameter_config(sender, app_data, user_data):
     if user_data[5] is not None:
         if 'env_settings' not in hyperParameterTuningData['mlagents']:
             hyperParameterTuningData['mlagents']['env_settings'] = {}
-        hyperParameterTuningData['mlagents']["env_settings"]["env_args"] = f"-ffmpeg-path {user_data[5]}"
+        hyperParameterTuningData['mlagents']["env_settings"]["env_args"] = ["-ffmpeg-path", user_data[5]]
 
     if not _verifyEnvPath(hyperParameterTuningData["realm_ai"]["env_path"]):
         dpg.configure_item("env_path_validation_prompt", show=True)
