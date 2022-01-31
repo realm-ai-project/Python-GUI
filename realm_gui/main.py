@@ -166,6 +166,11 @@ def edit_and_create_mlagents_config(sender, app_data, user_data):
     mlAgentsData["summary_freq"] = dpg.get_value(user_data[12])
     mlAgentsData["threaded"] = dpg.get_value(user_data[13])
 
+    if user_data[15] is not None:
+        if 'env_settings' not in mlAgentsData:
+            mlAgentsData['env_settings'] = {}
+        mlAgentsData["env_settings"]["env_args"] = ["-ffmpeg-path", user_data[15]]
+
     reformattedMlAgentsData = {}
     reformattedMlAgentsData["default_settings"] = mlAgentsData
 
@@ -190,6 +195,11 @@ def edit_and_create_hyperparameter_config(sender, app_data, user_data):
     hyperParameterTuningData["realm_ai"]["total_trials"] = int(dpg.get_value(user_data[2]))
     hyperParameterTuningData["realm_ai"]["warmup_trials"] = int(dpg.get_value(user_data[2])) // 3
     hyperParameterTuningData["realm_ai"]["algorithm"] = dpg.get_value(user_data[3])
+
+    if user_data[5] is not None:
+        if 'env_settings' not in hyperParameterTuningData['mlagents']:
+            hyperParameterTuningData['mlagents']['env_settings'] = {}
+        hyperParameterTuningData['mlagents']["env_settings"]["env_args"] = ["-ffmpeg-path", user_data[5]]
 
     if not _verifyEnvPath(hyperParameterTuningData["realm_ai"]["env_path"]):
         dpg.configure_item("env_path_validation_prompt", show=True)
@@ -276,7 +286,7 @@ def run_tune_and_training(sender, app_data, user_data):
         hyperParameterConfigFile = os.path.join(f, hyperparameter_config_file_to_run)
         runTunerAndMlAgents(hyperParameterConfigFile, hyperParameterTuningData["realm_ai"]["env_path"])
 
-def startGUI():
+def startGUI(args : argparse.Namespace):
     global showMlAgents, showHyperParameter, mlAgentsData, hyperParameterTuningData, allMlAgentsConfigFiles, allHyperParameterTuningConfigFiles
 
    # Global Window Variables
@@ -402,7 +412,7 @@ def startGUI():
             with dpg.group(horizontal=True):
                 dpg.add_button(label="Restore Defaults", callback=restore_ml_config, user_data=[batch_size, buffer_size, learning_rate, learning_rate_schedule, normalize, hidden_units, num_layers, gamma, strength, keep_checkpoints, ml_max_steps, time_horizon, summary_freq, threaded], small=True)
                 dpg.add_spacer(width=8)
-                dpg.add_button(label="Save ML-Agents Configuration", user_data=[batch_size, buffer_size, learning_rate, learning_rate_schedule, normalize, hidden_units, num_layers, gamma, strength, keep_checkpoints, ml_max_steps, time_horizon, summary_freq, threaded, mlagents_config_file_name], callback=edit_and_create_mlagents_config, small=True)
+                dpg.add_button(label="Save ML-Agents Configuration", user_data=[batch_size, buffer_size, learning_rate, learning_rate_schedule, normalize, hidden_units, num_layers, gamma, strength, keep_checkpoints, ml_max_steps, time_horizon, summary_freq, threaded, mlagents_config_file_name, args.ffmpeg_path], callback=edit_and_create_mlagents_config, small=True)
                 dpg.add_spacer(width=8)
                 dpg.add_button(label="Start Training", callback=prompt_show_ml_agents_config, user_data=[mlagents_config_file_to_run], small=True)
                 dpg.add_spacer(height=30)
@@ -427,7 +437,7 @@ def startGUI():
             with dpg.group(horizontal=True):
                 dpg.add_button(label="Restore Defaults", callback=restore_hyperparameter_config, user_data=[env_path, max_steps, total_trials, algorithm], small=True)
                 dpg.add_spacer(width=8)
-                dpg.add_button(label="Save Hyperparameter Configuration", callback=edit_and_create_hyperparameter_config, user_data=[env_path, max_steps, total_trials, algorithm, hyperparameter_config_file_name], small=True)
+                dpg.add_button(label="Save Hyperparameter Configuration", callback=edit_and_create_hyperparameter_config, user_data=[env_path, max_steps, total_trials, algorithm, hyperparameter_config_file_name, args.ffmpeg_path], small=True)
                 dpg.add_spacer(width=8)
                 dpg.add_button(label="Start Hyperparameter Tuning and Training", callback=prompt_show_hyperparameter_config, user_data=[env_path, hyperparameter_config_file_to_run], small=True)
 
@@ -457,6 +467,7 @@ def main():
     parser.add_argument('--hyperparameter', action='store_true')
     parser.add_argument('--results-dir', type=str, default="results", help="Results directory for training results to be outputed to.")
     parser.add_argument('--run-id', type=str, default="ppo", help="Identifier for the training run. Used to name the subdirectory for the training data within the results directory")
+    parser.add_argument('--ffmpeg-path', type=str, default=None)
 
     # ML Agents Data
     with path(realm_gui, 'ml_agents_configs') as f:
@@ -486,7 +497,7 @@ def main():
     defaultMlAgentsData = copy.deepcopy(mlAgentsData)
     defaultHyperParameterTuningData = copy.deepcopy(hyperParameterTuningData)
 
-    startGUI()
+    startGUI(args)
 
 if __name__ == "__main__":
     main()
