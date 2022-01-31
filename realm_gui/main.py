@@ -415,7 +415,7 @@ def startGUI():
             algorithms = ["bayes", "random"]
             algorithm = dpg.add_combo(label="algorithm", items=algorithms, default_value=algorithms[0])
             _help("Do not edit if you are not familar with RL")
-            env_path = dpg.add_input_text(label="env_path", width=400, hint="env_path of ml-agents")
+            env_path = dpg.add_input_text(label="env_path", default_value=hyperParameterTuningData["realm_ai"]["env_path"], width=400, hint="env_path of ml-agents")
             _help("Env path of Ml-Agents")
             max_steps = dpg.add_input_int(label="max_steps", default_value=int(hyperParameterTuningData["mlagents"]["default_settings"]["max_steps"]), step=1000, min_value=1, max_value=1e9)
             _help("Number of training steps for the full run, performed after the hyperparameter tuning runs")
@@ -474,6 +474,8 @@ def main():
         hyperParameterTuningData["realm_ai"]["behavior_name"] = args.behavior_name
     if args.env_path != None:
         hyperParameterTuningData["realm_ai"]["env_path"] = args.env_path
+    else:
+        hyperParameterTuningData["realm_ai"]["env_path"] = ""
     if args.mlagents:
         showMlAgents = True
     if args.hyperparameter:
