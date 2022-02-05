@@ -3,6 +3,7 @@ import copy
 import os
 import shutil
 import webbrowser
+import subprocess
 from datetime import datetime
 from importlib.resources import path
 
@@ -22,6 +23,10 @@ hyperParameterTuningData = {}
 defaultHyperParameterTuningData = {}
 allHyperParameterTuningConfigFiles = []
 showHyperParameter = False
+
+# Dashboard Variables
+showDashboard = False
+dashboardBackendProcess = None
 
 # results directory
 resultsDir = "results"
@@ -286,8 +291,32 @@ def run_tune_and_training(sender, app_data, user_data):
         hyperParameterConfigFile = os.path.join(f, hyperparameter_config_file_to_run)
         runTunerAndMlAgents(hyperParameterConfigFile, hyperParameterTuningData["realm_ai"]["env_path"])
 
+def start_dashboard_backend(sender, app_data, user_data):
+    global dashboardBackendProcess
+    dashboardBackendProcess = subprocess.Popen("realm-report", creationflags=subprocess.CREATE_NEW_PROCESS_GROUP)
+    dpg.set_value("dashboardBackendStatus", "Dashboard backend process is running.")
+    
+def stop_dashboard_backend(sender, app_data, user_data):
+    global dashboardBackendProcess
+    if dashboardBackendProcess != None:
+        dashboardBackendProcess.terminate()
+        dashboardBackendProcess = None
+        dpg.set_value("dashboardBackendStatus", "Dashboard backend process is stopped.")
+    
+def open_dashboard(sender, app_data, user_data):
+    webbrowser.open("http://localhost:5000")
+
+def on_start_gui(sender, app_data, user_data):
+    global showDashboard
+    if showDashboard:
+        start_dashboard_backend(sender, app_data, user_data)
+        open_dashboard(sender, app_data, user_data)
+
+def on_exit_gui(sender, app_data, user_data):
+    stop_dashboard_backend(sender, app_data, user_data)
+
 def startGUI(args : argparse.Namespace):
-    global showMlAgents, showHyperParameter, mlAgentsData, hyperParameterTuningData, allMlAgentsConfigFiles, allHyperParameterTuningConfigFiles
+    global showMlAgents, showHyperParameter, showDashboard, mlAgentsData, hyperParameterTuningData, allMlAgentsConfigFiles, allHyperParameterTuningConfigFiles
 
    # Global Window Variables
     GLOBAL_WIDTH = 1000
@@ -295,7 +324,7 @@ def startGUI(args : argparse.Namespace):
     GLOBAL_FONT_SIZE = 1.15
 
     dpg.create_context()
-    dpg.create_viewport(title="REALM_AI", width=GLOBAL_WIDTH, height=GLOBAL_HEIGHT)
+    dpg.create_viewport(title="REALM_AI Training Manager", width=GLOBAL_WIDTH, height=GLOBAL_HEIGHT)
     dpg.set_global_font_scale(GLOBAL_FONT_SIZE)
 
     # Themes
@@ -305,6 +334,10 @@ def startGUI(args : argparse.Namespace):
             dpg.add_theme_color(dpg.mvThemeCol_ButtonActive, [0, 0, 0, 0])
             dpg.add_theme_color(dpg.mvThemeCol_ButtonHovered, [29, 151, 236, 25])
             dpg.add_theme_color(dpg.mvThemeCol_Text, [29, 151, 236])
+
+    # Values
+    with dpg.value_registry():
+        dpg.add_string_value(default_value="Dashboard backend process has not been started.", tag="dashboardBackendStatus")
 
     # Able to browse previous runs and files
     with dpg.file_dialog(default_path="", directory_selector=False, show=False, id="file_dialog_id", height=150):
@@ -340,7 +373,7 @@ def startGUI(args : argparse.Namespace):
             dpg.add_button(label="Cancel", width=75, callback=lambda: dpg.configure_item("hyperparameter_prompt", show=False))
 
     # Main Window
-    with dpg.window(label="Training Manager", width=GLOBAL_WIDTH-15, height=GLOBAL_HEIGHT-50, no_collapse=True, no_close=True):        
+    with dpg.window(label="Training Manager", tag="Main Window", width=GLOBAL_WIDTH-15, height=GLOBAL_HEIGHT-50, no_collapse=True, no_close=True):        
 
         # Introduction
         with dpg.group(horizontal=True):
@@ -440,6 +473,23 @@ def startGUI(args : argparse.Namespace):
                 dpg.add_button(label="Save Hyperparameter Configuration", callback=edit_and_create_hyperparameter_config, user_data=[env_path, max_steps, total_trials, algorithm, hyperparameter_config_file_name, args.ffmpeg_path], small=True)
                 dpg.add_spacer(width=8)
                 dpg.add_button(label="Start Hyperparameter Tuning and Training", callback=prompt_show_hyperparameter_config, user_data=[env_path, hyperparameter_config_file_to_run], small=True)
+                dpg.add_spacer(height=30)
+
+        #  Main Window
+        with dpg.collapsing_header(label="Dashboard", default_open=showDashboard):
+            dpg.add_text("Dashboard:\nStart the dashboard backend to view your results in any web browser!", color=[232,163,33])
+            dpg.add_spacer(height=10)
+
+            dpg.add_text(source="dashboardBackendStatus", color=[232,163,33])
+            dpg.add_spacer(height=25)
+
+            with dpg.group(horizontal=True):
+                dpg.add_button(label="Start backend process", callback=start_dashboard_backend, small=True)
+                dpg.add_spacer(width=8)
+                dpg.add_button(label="Stop backend process", callback=stop_dashboard_backend, small=True)
+                dpg.add_spacer(width=8)
+                dpg.add_button(label="Open Dashboard", callback=open_dashboard, small=True)                
+                dpg.add_spacer(height=30)
 
         # Env Path Validation Error Prompt
         with dpg.window(label="ERROR", modal=True, pos=[GLOBAL_WIDTH/6, GLOBAL_HEIGHT/3] ,id="env_path_validation_prompt", show=False):
@@ -447,13 +497,17 @@ def startGUI(args : argparse.Namespace):
             dpg.add_spacer(height=10)
             dpg.add_button(label="Continue", width=75, callback=lambda: dpg.configure_item("env_path_validation_prompt", show=False))
 
+    dpg.set_frame_callback(1, on_start_gui)
+    dpg.set_exit_callback(on_exit_gui)
+
     dpg.setup_dearpygui()
     dpg.show_viewport()
+    dpg.set_primary_window("Main Window", True)
     dpg.start_dearpygui()
     dpg.destroy_context()
 
 def main():
-    global showMlAgents, showHyperParameter, mlAgentsData, hyperParameterTuningData, defaultMlAgentsData, defaultHyperParameterTuningData, resultsDir, runId
+    global showMlAgents, showHyperParameter, showDashboard, mlAgentsData, hyperParameterTuningData, defaultMlAgentsData, defaultHyperParameterTuningData, resultsDir, runId
 
     # Master Configuration Files
     MASTER_MLAGENTS_FILE = "ppo.yaml"
@@ -465,6 +519,7 @@ def main():
     parser.add_argument('--behavior-name', type=str, default=None, help='Name of behaviour. This can be found under the agent\'s "Behavior Parameters" component in the inspector of Unity')
     parser.add_argument('--mlagents', action='store_true')
     parser.add_argument('--hyperparameter', action='store_true')
+    parser.add_argument('--dashboard', action='store_true')
     parser.add_argument('--results-dir', type=str, default="results", help="Results directory for training results to be outputed to.")
     parser.add_argument('--run-id', type=str, default="ppo", help="Identifier for the training run. Used to name the subdirectory for the training data within the results directory")
     parser.add_argument('--ffmpeg-path', type=str, default=None)
@@ -491,6 +546,8 @@ def main():
         showMlAgents = True
     if args.hyperparameter:
         showHyperParameter = True
+    if args.dashboard:
+        showDashboard = True
     resultsDir = args.results_dir
     runId = args.run_id
 
