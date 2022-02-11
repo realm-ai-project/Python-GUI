@@ -6,6 +6,7 @@ import webbrowser
 import subprocess
 from datetime import datetime
 from importlib.resources import path
+import multiprocessing
 
 import dearpygui.dearpygui as dpg
 import yaml
@@ -145,6 +146,8 @@ def restore_hyperparameter_config(sender, app_data, user_data):
     dpg.set_value(user_data[1], hyperParameterTuningData["mlagents"]["default_settings"]["max_steps"])
     dpg.set_value(user_data[2], hyperParameterTuningData["realm_ai"]["total_trials"])
     dpg.set_value(user_data[3], hyperParameterTuningData["realm_ai"]["algorithm"])
+    dpg.set_value(user_data[4], multiprocessing.cpu_count())
+    dpg.set_value(user_data[5], hyperParameterTuningData["mlagents"]["default_settings"]["max_steps"])
 
 def edit_and_create_mlagents_config(sender, app_data, user_data):
     global mlAgentsData
@@ -196,16 +199,19 @@ def edit_and_create_hyperparameter_config(sender, app_data, user_data):
 
     # Overwrite existing hyperparameter config file
     hyperParameterTuningData["realm_ai"]["env_path"] = dpg.get_value(user_data[0])
-    hyperParameterTuningData["mlagents"]["default_settings"]["max_steps"] = int(dpg.get_value(user_data[1]))
+    hyperParameterTuningData["realm_ai"]["full_run_after_tuning"]["max_steps"] = int(dpg.get_value(user_data[1]))
     hyperParameterTuningData["realm_ai"]["total_trials"] = int(dpg.get_value(user_data[2]))
     hyperParameterTuningData["realm_ai"]["warmup_trials"] = int(dpg.get_value(user_data[2])) // 3
     hyperParameterTuningData["realm_ai"]["algorithm"] = dpg.get_value(user_data[3])
-
+    
+    if 'env_settings' not in hyperParameterTuningData['mlagents']:
+        hyperParameterTuningData['mlagents']['env_settings'] = {}
+    
     if user_data[5] is not None:
-        if 'env_settings' not in hyperParameterTuningData['mlagents']:
-            hyperParameterTuningData['mlagents']['env_settings'] = {}
         hyperParameterTuningData['mlagents']["env_settings"]["env_args"] = ["-ffmpeg-path", user_data[5]]
 
+    hyperParameterTuningData['mlagents']['env_settings']['num_envs'] = int(dpg.get_value(user_data[6]))
+    hyperParameterTuningData["mlagents"]["default_settings"]["max_steps"] = int(dpg.get_value(user_data[7]))
     if not _verifyEnvPath(hyperParameterTuningData["realm_ai"]["env_path"]):
         dpg.configure_item("env_path_validation_prompt", show=True)
         return 
@@ -417,7 +423,7 @@ def startGUI(args : argparse.Namespace):
             _help("Typical range: 1 - 3")
 
             dpg.add_spacer(height=3)
-            dpg.add_text("Reward Signals")
+            dpg.add_text("Reward Signals", color=[137,207,240])
             gamma = dpg.add_input_float(label="gamma", default_value=float(mlAgentsData["reward_signals"]["extrinsic"]["gamma"]), min_value=1e-9, min_clamped=True, max_value=0.99999, max_clamped=True)
             _help("Typical range: 0.8 - 0.995")
             strength = dpg.add_input_float(label="strength", default_value=float(mlAgentsData["reward_signals"]["extrinsic"]["strength"]), min_value=1e-9, min_clamped=True, max_value=0.99999, max_clamped=True)
@@ -457,20 +463,31 @@ def startGUI(args : argparse.Namespace):
             
             algorithms = ["bayes", "random"]
             algorithm = dpg.add_combo(label="algorithm", items=algorithms, default_value=algorithms[0])
-            _help("Do not edit if you are not familar with RL")
+            _help("Hyperparameter tuning algorithm")
             env_path = dpg.add_input_text(label="env_path", default_value=hyperParameterTuningData["realm_ai"]["env_path"], width=400, hint="env_path of ml-agents")
             _help("Env path of Ml-Agents")
-            max_steps = dpg.add_input_int(label="max_steps", default_value=int(hyperParameterTuningData["mlagents"]["default_settings"]["max_steps"]), step=1000, min_value=1, max_value=1e9)
-            _help("Number of training steps for the full run, performed after the hyperparameter tuning runs")
+            num_envs = dpg.add_input_int(label="num_envs", default_value=multiprocessing.cpu_count(), step=1, min_value=1, min_clamped=True)
+            _help("Number of parallel environments. Set to number of logical cores of system by default.")
             total_trials = dpg.add_input_int(label="total_trials", default_value=int(hyperParameterTuningData["realm_ai"]["total_trials"]), step=1, min_value=1, min_clamped=True)
             _help("Number of hyperparameter tuning trials")
+            tuning_steps = dpg.add_input_int(label="tuning_steps", default_value=int(hyperParameterTuningData["mlagents"]["default_settings"]["max_steps"]), step=10000,min_value=1, min_clamped=True)
+            _help("Number of training steps per hyperparameter tuning run")
+
+            dpg.add_spacer(height=3)
+            dpg.add_text("Full Training Run Settings", color=[137,207,240])
+            dpg.add_text("A full training run is automatically initiated after hyperparameter tuning.\nThe full training run automatically uses the best hyperparameters found from the tuning process.", color=[232,163,33], )
+            full_run_max_steps = dpg.add_input_int(label="training_steps", default_value=int(hyperParameterTuningData["realm_ai"]["full_run_after_tuning"]["max_steps"]), step=10000, min_value=1, min_clamped=True)
+            _help("Number of training steps for the full run")
+
+            dpg.add_spacer(height=3)
+            dpg.add_text("Configuration File Name", color=[137,207,240])
             hyperparameter_config_file_name = dpg.add_input_text(label="hyperparameter_config_file_name", default_value=".yaml", width=400, hint="new config file name")
             dpg.add_spacer(height=25)
 
             with dpg.group(horizontal=True):
-                dpg.add_button(label="Restore Defaults", callback=restore_hyperparameter_config, user_data=[env_path, max_steps, total_trials, algorithm], small=True)
+                dpg.add_button(label="Restore Defaults", callback=restore_hyperparameter_config, user_data=[env_path, full_run_max_steps, total_trials, algorithm,num_envs, tuning_steps], small=True)
                 dpg.add_spacer(width=8)
-                dpg.add_button(label="Save Hyperparameter Configuration", callback=edit_and_create_hyperparameter_config, user_data=[env_path, max_steps, total_trials, algorithm, hyperparameter_config_file_name, args.ffmpeg_path], small=True)
+                dpg.add_button(label="Save Hyperparameter Configuration", callback=edit_and_create_hyperparameter_config, user_data=[env_path, full_run_max_steps, total_trials, algorithm, hyperparameter_config_file_name, args.ffmpeg_path, num_envs, tuning_steps], small=True)
                 dpg.add_spacer(width=8)
                 dpg.add_button(label="Start Hyperparameter Tuning and Training", callback=prompt_show_hyperparameter_config, user_data=[env_path, hyperparameter_config_file_to_run], small=True)
                 dpg.add_spacer(height=30)

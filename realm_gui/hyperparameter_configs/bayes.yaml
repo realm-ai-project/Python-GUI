@@ -9,6 +9,8 @@ realm_ai:
     max_steps: 1000000 # number of steps to run for the full training
 
 mlagents: # all values here (even those that are commented out) are used by the script. Other possible configs that are not here can be added at the discretion of the user.
+  env_settings:
+    num_envs: 2
   default_settings:
     trainer_type: ppo
     hyperparameters:
@@ -29,6 +31,11 @@ mlagents: # all values here (even those that are commented out) are used by the 
       extrinsic:
         gamma: unif(0.9, 1.0)
         strength: 1.0
+      curiosity:
+        strength: 0.02
+        gamma: 0.99
+        encoding_size: 256
+        learning_rate: 3.0e-4
     keep_checkpoints: 5
     max_steps: 500000
     time_horizon: log_unif(32, 8192)
