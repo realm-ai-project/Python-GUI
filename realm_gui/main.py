@@ -304,6 +304,7 @@ def stop_dashboard_backend(sender, app_data, user_data):
         dpg.set_value("dashboardBackendStatus", "Dashboard backend process is stopped.")
     
 def open_dashboard(sender, app_data, user_data):
+    start_dashboard_backend(sender, app_data, user_data)
     webbrowser.open("http://localhost:5000")
 
 def on_start_gui(sender, app_data, user_data):
@@ -484,10 +485,6 @@ def startGUI(args : argparse.Namespace):
             dpg.add_spacer(height=25)
 
             with dpg.group(horizontal=True):
-                dpg.add_button(label="Start backend process", callback=start_dashboard_backend, small=True)
-                dpg.add_spacer(width=8)
-                dpg.add_button(label="Stop backend process", callback=stop_dashboard_backend, small=True)
-                dpg.add_spacer(width=8)
                 dpg.add_button(label="Open Dashboard", callback=open_dashboard, small=True)                
                 dpg.add_spacer(height=30)
 
