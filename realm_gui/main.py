@@ -33,6 +33,11 @@ dashboardBackendProcess = None
 resultsDir = "results"
 runId = "ppo"
 
+# Global Window Variables
+GLOBAL_WIDTH = 1000
+GLOBAL_HEIGHT = 800
+GLOBAL_FONT_SIZE = 1.15
+
 def runTunerAndMlAgents(configPath: str, envPath: str):
     global resultsDir, runId
 
@@ -148,6 +153,40 @@ def restore_hyperparameter_config(sender, app_data, user_data):
     dpg.set_value(user_data[3], hyperParameterTuningData["realm_ai"]["algorithm"])
     dpg.set_value(user_data[4], multiprocessing.cpu_count())
     dpg.set_value(user_data[5], hyperParameterTuningData["mlagents"]["default_settings"]["max_steps"])
+    dpg.set_value(user_data[6], hyperParameterTuningData["mlagents"]["default_settings"]["trainer_type"])
+
+
+def algorithm_chooser_cb(sender, app_data, user_data):
+
+    def sac_cb():
+        dpg.set_value("training_algorithm_dropdown", 'sac')
+        dpg.configure_item("algorithm_chooser", show=False)
+
+    def ppo_cb():
+        dpg.set_value("training_algorithm_dropdown", 'sac')
+        dpg.configure_item("algorithm_chooser", show=False)
+
+    dpg.configure_item("algorithm_chooser", show=True)
+    
+    try:
+        import torch
+        if torch.cuda.is_available():
+            device = torch.device("cuda")
+            _ = torch.empty((2,2), device=device)
+            recommend_sac=True
+        else: recommend_sac = False
+    except:
+        recommend_sac = False
+    
+    dpg.configure_item("algorithm_chooser_loading_bar", show=False)
+    dpg.configure_item("algorithm_chooser_recommendation", show=True)
+    if recommend_sac:
+        dpg.configure_item("algorithm_chooser_recommend_sac", show=True)
+        dpg.configure_item("algorithm_chooser_button", label="Use SAC", callback=sac_cb)
+    else:
+        dpg.configure_item("algorithm_chooser_recommend_ppo", show=True)
+        dpg.configure_item("algorithm_chooser_button", label="Use PPO", callback=ppo_cb)
+
 
 def edit_and_create_mlagents_config(sender, app_data, user_data):
     global mlAgentsData
@@ -197,6 +236,10 @@ def edit_and_create_mlagents_config(sender, app_data, user_data):
 def edit_and_create_hyperparameter_config(sender, app_data, user_data):
     global hyperParameterTuningData
 
+    if dpg.get_value(user_data[8])=='sac':
+        with path(realm_gui, 'hyperparameter_configs') as f:
+            hyperParameterConfigFile = os.path.join(f, 'bayes_sac.yaml')
+            hyperParameterTuningData = loadHyperParameterConfig(hyperParameterConfigFile)
     # Overwrite existing hyperparameter config file
     hyperParameterTuningData["realm_ai"]["env_path"] = dpg.get_value(user_data[0])
     hyperParameterTuningData["realm_ai"]["full_run_after_tuning"]["max_steps"] = int(dpg.get_value(user_data[1]))
@@ -324,11 +367,6 @@ def on_exit_gui(sender, app_data, user_data):
 def startGUI(args : argparse.Namespace):
     global showMlAgents, showHyperParameter, showDashboard, mlAgentsData, hyperParameterTuningData, allMlAgentsConfigFiles, allHyperParameterTuningConfigFiles
 
-   # Global Window Variables
-    GLOBAL_WIDTH = 1000
-    GLOBAL_HEIGHT = 800
-    GLOBAL_FONT_SIZE = 1.15
-
     dpg.create_context()
     dpg.create_viewport(title="REALM_AI Training Manager", width=GLOBAL_WIDTH, height=GLOBAL_HEIGHT)
     dpg.set_global_font_scale(GLOBAL_FONT_SIZE)
@@ -377,6 +415,21 @@ def startGUI(args : argparse.Namespace):
         with dpg.group(horizontal=True):
             dpg.add_button(label="Proceed", width=75, callback=run_tune_and_training, user_data=[hyperparameter_config_file_to_run])
             dpg.add_button(label="Cancel", width=75, callback=lambda: dpg.configure_item("hyperparameter_prompt", show=False))
+
+    # PPO/SAC algorithm chooser prompt
+    with dpg.window(modal=True, pos=[20, GLOBAL_HEIGHT//3], width=GLOBAL_WIDTH-40, height=GLOBAL_HEIGHT//3, id="algorithm_chooser", show=False):
+        # dpg.configure_item("loading_screen", show=True)
+        dpg.add_loading_indicator(tag="algorithm_chooser_loading_bar", circle_count=8)
+        with dpg.group(tag="algorithm_chooser_recommendation", show=False):
+            dpg.add_text("A cuda-enabled card has been detected. We recommend the Soft Actor Critic(SAC) algorithm,\nespecially if the environment is heavier/slower.", tag="algorithm_chooser_recommend_sac", show=False)
+            dpg.add_text("A cuda-enabled card has not been detected. We recommend the Proximal Policy Optimization(PPO) algorithm.", tag="algorithm_chooser_recommend_ppo", show=False)
+            _hyperlink("Click here for more information", "https://github.com/Unity-Technologies/ml-agents/blob/main/docs/ML-Agents-Overview.md#deep-reinforcement-learning")
+            dpg.add_spacer(height=10)
+            with dpg.group(horizontal=True):
+                dpg.add_button(label="", width=120, tag="algorithm_chooser_button")
+                dpg.add_button(label="Cancel", width=80, callback=lambda: dpg.configure_item("algorithm_chooser", show=False))
+            #     dpg.add_spacer(width=20)
+            #     dpg.add_button(label="No, continue with PPO", width=175, callback=close_window_and_call_cb)
 
     # Main Window
     with dpg.window(label="Training Manager", tag="Main Window", width=GLOBAL_WIDTH-15, height=GLOBAL_HEIGHT-50, no_collapse=True, no_close=True):        
@@ -461,8 +514,8 @@ def startGUI(args : argparse.Namespace):
             dpg.add_text("Basic Hyperparameter Tuning Configuration Values:\nEdit the values, press save, and then start training!", color=[232,163,33])
             dpg.add_spacer(height=10)
             
-            algorithms = ["bayes", "random"]
-            algorithm = dpg.add_combo(label="algorithm", items=algorithms, default_value=algorithms[0])
+            tuning_algorithms = ["bayes", "random"]
+            tuning_algorithm = dpg.add_combo(label="tuning algorithm", items=tuning_algorithms, default_value=tuning_algorithms[0])
             _help("Hyperparameter tuning algorithm")
             env_path = dpg.add_input_text(label="env_path", default_value=hyperParameterTuningData["realm_ai"]["env_path"], width=400, hint="env_path of ml-agents")
             _help("Env path of Ml-Agents")
@@ -482,12 +535,20 @@ def startGUI(args : argparse.Namespace):
             dpg.add_spacer(height=3)
             dpg.add_text("Configuration File Name", color=[137,207,240])
             hyperparameter_config_file_name = dpg.add_input_text(label="hyperparameter_config_file_name", default_value=".yaml", width=400, hint="new config file name")
+
+            dpg.add_spacer(height=3)
+            dpg.add_text("ML-Agent Settings", color=[137,207,240])
+            training_algorithms = ["ppo", "sac"]
+            with dpg.group(horizontal=True):
+                training_algorithm = dpg.add_combo(label="RL algorithm", items=training_algorithms, default_value=training_algorithms[0], width=200, tag="training_algorithm_dropdown")
+                _help("Reinforcement Learning algorithm that will be used. The options are Proximal Policy Optimization(PPO) and Soft Actor Critic(SAC)")
+                dpg.add_button(label="Help Me Decide", callback=algorithm_chooser_cb)
             dpg.add_spacer(height=25)
 
             with dpg.group(horizontal=True):
-                dpg.add_button(label="Restore Defaults", callback=restore_hyperparameter_config, user_data=[env_path, full_run_max_steps, total_trials, algorithm,num_envs, tuning_steps], small=True)
+                dpg.add_button(label="Restore Defaults", callback=restore_hyperparameter_config, user_data=[env_path, full_run_max_steps, total_trials, tuning_algorithm,num_envs, tuning_steps, training_algorithm], small=True)
                 dpg.add_spacer(width=8)
-                dpg.add_button(label="Save Hyperparameter Configuration", callback=edit_and_create_hyperparameter_config, user_data=[env_path, full_run_max_steps, total_trials, algorithm, hyperparameter_config_file_name, args.ffmpeg_path, num_envs, tuning_steps], small=True)
+                dpg.add_button(label="Save Hyperparameter Configuration", callback=edit_and_create_hyperparameter_config, user_data=[env_path, full_run_max_steps, total_trials, tuning_algorithm, hyperparameter_config_file_name, args.ffmpeg_path, num_envs, tuning_steps, training_algorithm], small=True)
                 dpg.add_spacer(width=8)
                 dpg.add_button(label="Start Hyperparameter Tuning and Training", callback=prompt_show_hyperparameter_config, user_data=[env_path, hyperparameter_config_file_to_run], small=True)
                 dpg.add_spacer(height=30)
