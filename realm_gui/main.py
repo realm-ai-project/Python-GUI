@@ -474,7 +474,7 @@ def startGUI(args : argparse.Namespace):
             dpg.add_button(label="Cancel", width=75, callback=lambda: dpg.configure_item("hyperparameter_prompt", show=False))
 
     # PPO/SAC algorithm chooser prompt
-    with dpg.window(modal=True, pos=[20, GLOBAL_HEIGHT//3], width=GLOBAL_WIDTH-40, height=GLOBAL_HEIGHT//3, id="algorithm_chooser", show=False):
+    with dpg.window(label="Training Algorithm Recommendation", modal=True, pos=[20, GLOBAL_HEIGHT//3], width=GLOBAL_WIDTH-40, height=GLOBAL_HEIGHT//3, id="algorithm_chooser", show=False):
         # dpg.configure_item("loading_screen", show=True)
         dpg.add_loading_indicator(tag="algorithm_chooser_loading_bar", circle_count=8)
         with dpg.group(tag="algorithm_chooser_recommendation", show=False):
