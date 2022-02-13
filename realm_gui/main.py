@@ -58,6 +58,15 @@ def runMLagents(configPath: str):
     print("mlagents-learn \"%s\" %s %s --force" % (configPath, runIdParameter, resultsDirParameter))
     os.system("mlagents-learn \"%s\" %s %s --force" % (configPath, runIdParameter, resultsDirParameter))
 
+def resumeMLagents(configPath: str, previous_run: str):
+    global resultsDir, runId
+
+    runIdParameter = "--run-id=" + runId
+    resultsDirParameter = "--results-dir=\"%s\"" % resultsDir
+    initializeFromParameter = "--initialize-from=\"%s\"" % previous_run
+    print("mlagents-learn \"%s\" %s %s %s --force" % (configPath, runIdParameter, resultsDirParameter, initializeFromParameter))
+    os.system("mlagents-learn \"%s\" %s %s %s --force" % (configPath, runIdParameter, resultsDirParameter, initializeFromParameter))
+
 def loadMlAgentsConfig(mlAgentsConfigFile):
     with open(mlAgentsConfigFile, 'r') as f:
         config = yaml.safe_load(f)
@@ -248,6 +257,7 @@ def prompt_show_hyperparameter_config(sender, app_data, user_data):
     dpg.configure_item(user_data[1], items=allHyperParameterTuningConfigFiles)
     dpg.configure_item("hyperparameter_prompt", show=True)
 
+# TODO we can merge these two functions together
 def prompt_show_ml_agents_config(sender, app_data, user_data):
     global allMlAgentsConfigFiles
 
@@ -270,6 +280,27 @@ def prompt_show_ml_agents_config(sender, app_data, user_data):
     dpg.configure_item("mlagents_prompt", show=True)
 
 
+def prompt_show_ml_agents_config_resume_training(sender, app_data, user_data):
+    global allMlAgentsConfigFiles
+
+    # Get all possible config files in current directory to show up
+    allMlAgentsConfigFiles = [] # reset list
+
+    with path(realm_gui, 'ml_agents_configs') as directory:
+        try:
+            for file in os.listdir(directory):
+                if file.endswith(".yaml"):
+                    allMlAgentsConfigFiles.append(file)
+
+            allMlAgentsConfigFiles.sort()
+        except OSError as e:
+            print("Error: %s : %s" % (directory, e.strerror))
+            allMlAgentsConfigFiles = []
+
+    # Prompt To Appear - user_data[0] = prompt dropdown component which dynamically changes it list contents
+    dpg.configure_item(user_data[0], items=allMlAgentsConfigFiles)
+    dpg.configure_item("mlagents_resume_training_prompt", show=True)
+
 # user_data[0] = mlagents_config_file_to_run
 def run_training(sender, app_data, user_data):
     mlagents_config_file_to_run = dpg.get_value(user_data[0])
@@ -279,6 +310,16 @@ def run_training(sender, app_data, user_data):
     with path(realm_gui, 'ml_agents_configs') as f:
         mlAgentsConfigFile = os.path.join(f, mlagents_config_file_to_run)
         runMLagents(mlAgentsConfigFile)
+
+def resume_training(sender, app_data, user_data):
+    mlagents_config_file_to_run = dpg.get_value(user_data[0])
+    previous_run = dpg.get_value(user_data[1])
+    dpg.configure_item("mlagents_resume_training_prompt", show=False)
+
+
+    with path(realm_gui, 'ml_agents_configs') as f:
+        mlAgentsConfigFile = os.path.join(f, mlagents_config_file_to_run)
+        resumeMLagents(mlAgentsConfigFile, previous_run)
 
 # user_data[0] = hyperparameter_config_file_to_run
 def run_tune_and_training(sender, app_data, user_data):
@@ -359,6 +400,21 @@ def startGUI(args : argparse.Namespace):
         with dpg.group(horizontal=True):
             dpg.add_button(label="Proceed", width=75, callback=run_training, user_data=[mlagents_config_file_to_run])
             dpg.add_button(label="Cancel", width=75, callback=lambda: dpg.configure_item("mlagents_prompt", show=False))
+
+    # ML-Agents Resume Training Prompt
+    with dpg.window(label="ML-Agents Resume Training", modal=True, pos=[GLOBAL_WIDTH/6, GLOBAL_HEIGHT/3] ,id="mlagents_resume_training_prompt", show=False):
+        dpg.add_text("You can resume ml-agents training from a previous training run.\nChoose a ml-agents configuration file and enter the path to the previous run to resume from:")
+        dpg.add_spacer(height=10)
+        mlagents_config_file_to_resume = dpg.add_combo(label="config_file", items=allMlAgentsConfigFiles)
+        dpg.add_spacer(height=10)
+        previous_run = dpg.add_input_text(label="previous_run")
+        dpg.add_spacer(height=10)
+        dpg.add_separator()
+        dpg.add_spacer(height=1)
+
+        with dpg.group(horizontal=True):
+            dpg.add_button(label="Proceed", width=75, callback=resume_training, user_data=[mlagents_config_file_to_resume, previous_run])
+            dpg.add_button(label="Cancel", width=75, callback=lambda: dpg.configure_item("mlagents_resume_training_prompt", show=False))
 
     # Tuner Prompt
     with dpg.window(label="Hyperparameter Tuning and Training", modal=True, pos=[GLOBAL_WIDTH/6, GLOBAL_HEIGHT/3] ,id="hyperparameter_prompt", show=False):
@@ -447,6 +503,8 @@ def startGUI(args : argparse.Namespace):
                 dpg.add_button(label="Restore Defaults", callback=restore_ml_config, user_data=[batch_size, buffer_size, learning_rate, learning_rate_schedule, normalize, hidden_units, num_layers, gamma, strength, keep_checkpoints, ml_max_steps, time_horizon, summary_freq, threaded], small=True)
                 dpg.add_spacer(width=8)
                 dpg.add_button(label="Save ML-Agents Configuration", user_data=[batch_size, buffer_size, learning_rate, learning_rate_schedule, normalize, hidden_units, num_layers, gamma, strength, keep_checkpoints, ml_max_steps, time_horizon, summary_freq, threaded, mlagents_config_file_name, args.ffmpeg_path], callback=edit_and_create_mlagents_config, small=True)
+                dpg.add_spacer(width=8)
+                dpg.add_button(label="Resume Training", callback=prompt_show_ml_agents_config_resume_training, user_data=[mlagents_config_file_to_resume], small=True)
                 dpg.add_spacer(width=8)
                 dpg.add_button(label="Start Training", callback=prompt_show_ml_agents_config, user_data=[mlagents_config_file_to_run], small=True)
                 dpg.add_spacer(height=30)
