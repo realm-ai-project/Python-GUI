@@ -33,20 +33,35 @@ dashboardBackendProcess = None
 resultsDir = "results"
 runId = "ppo"
 
+# some dropdown options
+training_resume_options = ["No", "Initialize from previous run", "Continue previous run"]
+training_resume_help = ("Choose \"No\" to start a completed new training run. \n"
+    "Choose \"Initialize from previous run\" to start a new training run, \nbut to start with the trained model from a previous run. \n"
+    "Choose \"Continue previous run\" to continue training a previous training run. \n"
+    "Note that if \"Continue previous run\" is chosen, a new results directory will not be created -- \nthe results will continue to be outputted into the previuos run's directory.")
+
+tuning_resume_options = ["No", "Continue previous run"]
+tuning_resume_help = ("Choose \"No\" to start a completed new training run. \n"
+    "Choose \"Continue previous run\" to continue training a previous training run. \n"
+    "Note that if \"Continue previous run\" is chosen, a new results directory will not be created -- \nthe results will continue to be outputted into the previuos run's directory.")
+
+
 # Global Window Variables
 GLOBAL_WIDTH = 1000
 GLOBAL_HEIGHT = 800
 GLOBAL_FONT_SIZE = 1.15
 
-def runTunerAndMlAgents(configPath: str, envPath: str, previous_run: str):
+def runTunerAndMlAgents(configPath: str, envPath: str, previous_run: str, start_new_run):
     global resultsDir, runId
 
-    resultsDirParameter = "--output-path=\"%s\"" % os.path.join(resultsDir, runId)
+    if start_new_run:
+        resultsDirParameter = "--output-path=\"%s\"" % os.path.join(resultsDir, runId)
+    else:
+        resultsDirParameter = "--output-path=\"%s\"" % previous_run
     configPathParameter = "--config-path=\"%s\"" % configPath
     envPathParameter = "--env-path=\"%s\"" % envPath
-    initializeFromParameter = "" if not previous_run else ("--initialize-from=\"%s\"" % previous_run)
-    print("realm-tune %s %s %s %s" % (configPathParameter, envPathParameter, resultsDirParameter, initializeFromParameter))
-    os.system("realm-tune %s %s %s %s" % (configPathParameter, envPathParameter, resultsDirParameter, initializeFromParameter))
+    print("realm-tune %s %s %s" % (configPathParameter, envPathParameter, resultsDirParameter))
+    os.system("realm-tune %s %s %s" % (configPathParameter, envPathParameter, resultsDirParameter))
 
 """
 mlagents-learn <trainer-config-file> --env=<env_name> --run-id=<run-identifier>
@@ -57,14 +72,26 @@ mlagents-learn <trainer-config-file> --env=<env_name> --run-id=<run-identifier>
 
 https://github.com/Unity-Technologies/ml-agents/blob/main/docs/Training-ML-Agents.md
 """
-def runMLagents(configPath: str, previous_run: str):
+def runMLagents(configPath: str, previous_run: str, start_new_run):
     global resultsDir, runId
 
-    runIdParameter = "--run-id=" + runId
-    resultsDirParameter = "--results-dir=\"%s\"" % resultsDir
-    initializeFromParameter = "" if not previous_run else ("--initialize-from=\"%s\"" % previous_run)
-    print("mlagents-learn \"%s\" %s %s %s --force" % (configPath, runIdParameter, resultsDirParameter, initializeFromParameter))
-    os.system("mlagents-learn \"%s\" %s %s %s --force" % (configPath, runIdParameter, resultsDirParameter, initializeFromParameter))
+    if start_new_run:
+        # start new run
+        # if previous run is specified, intiailized from it
+        runIdParameter = "--run-id=" + runId
+        resultsDirParameter = "--results-dir=\"%s\"" % resultsDir
+        initializeFromParameter = "" if not previous_run else ("--initialize-from=\"%s\"" % previous_run)
+        
+        print("mlagents-learn \"%s\" %s %s %s --force" % (configPath, runIdParameter, resultsDirParameter, initializeFromParameter))
+        os.system("mlagents-learn \"%s\" %s %s %s --force" % (configPath, runIdParameter, resultsDirParameter, initializeFromParameter))
+    else:
+        # try to continue the previous run
+        runId = os.path.basename(os.path.normpath(previous_run))
+        resultsDir = os.path.dirname(os.path.normpath(previous_run))
+        runIdParameter = "--run-id=" + runId
+        resultsDirParameter = "--results-dir=\"%s\"" % resultsDir
+        print("mlagents-learn \"%s\" %s %s --resume" % (configPath,  runIdParameter, resultsDirParameter))
+        os.system("mlagents-learn \"%s\" %s %s --resume" % (configPath, runIdParameter, resultsDirParameter))
 
 def loadMlAgentsConfig(mlAgentsConfigFile):
     with open(mlAgentsConfigFile, 'r') as f:
@@ -297,8 +324,6 @@ def prompt_show_hyperparameter_config(sender, app_data, user_data):
 
     # Prompt To Appear - user_data[1] = prompt dropdown component which dynamically changes it list contents
     dpg.configure_item(user_data[1], items=allHyperParameterTuningConfigFiles)
-    # Show field for resuming training when applicable
-    dpg.configure_item("tuning_previous_run_group", show=user_data[2])
     dpg.configure_item("hyperparameter_prompt", show=True)
 
 def prompt_show_ml_agents_config(sender, app_data, user_data):
@@ -320,8 +345,6 @@ def prompt_show_ml_agents_config(sender, app_data, user_data):
 
     # Prompt To Appear - user_data[0] = prompt dropdown component which dynamically changes it list contents
     dpg.configure_item(user_data[0], items=allMlAgentsConfigFiles)
-    # Show field for resuming training when applicable
-    dpg.configure_item("training_previous_run_group", show=user_data[1])
     dpg.configure_item("mlagents_prompt", show=True)
 
 
@@ -329,12 +352,21 @@ def prompt_show_ml_agents_config(sender, app_data, user_data):
 def run_training(sender, app_data, user_data):
     mlagents_config_file_to_run = dpg.get_value(user_data[0])
     previous_run = dpg.get_value(user_data[1])
+    resume_option = dpg.get_value(user_data[2])
     dpg.configure_item("mlagents_prompt", show=False)
 
+    start_new_run = True
+    if resume_option == training_resume_options[0]:
+        previous_run = ""
+        start_new_run = True
+    elif resume_option == training_resume_options[1]:
+        start_new_run = True
+    else:
+        start_new_run = False
 
     with path(realm_gui, 'ml_agents_configs') as f:
         mlAgentsConfigFile = os.path.join(f, mlagents_config_file_to_run)
-        runMLagents(mlAgentsConfigFile, previous_run)
+        runMLagents(mlAgentsConfigFile, previous_run, start_new_run)
 
 
 # user_data[0] = hyperparameter_config_file_to_run
@@ -343,11 +375,28 @@ def run_tune_and_training(sender, app_data, user_data):
 
     hyperparameter_config_file_to_run = dpg.get_value(user_data[0])
     previous_run = dpg.get_value(user_data[1])
+    resume_option = dpg.get_value(user_data[2])
     dpg.configure_item("hyperparameter_prompt", show=False)
 
+    start_new_run = True
+    if resume_option == training_resume_options[0]:
+        previous_run = ""
+        start_new_run = True
+    else:
+        start_new_run = False
+    
     with path(realm_gui, 'hyperparameter_configs') as f:
         hyperParameterConfigFile = os.path.join(f, hyperparameter_config_file_to_run)
-        runTunerAndMlAgents(hyperParameterConfigFile, hyperParameterTuningData["realm_ai"]["env_path"], previous_run)
+        runTunerAndMlAgents(hyperParameterConfigFile, hyperParameterTuningData["realm_ai"]["env_path"], previous_run, start_new_run)
+
+def mlagents_resume_dropdown_update(sender, app_data, user_data):
+    choice = dpg.get_value(sender)
+    dpg.configure_item("training_previous_run_group", show=(choice != training_resume_options[0]))
+
+def hyperparameter_resume_dropdown_update(sender, app_data, user_data):
+    choice = dpg.get_value(sender)
+    dpg.configure_item("tuning_previous_run_group", show=(choice != tuning_resume_options[0]))
+
 
 def start_dashboard_backend(sender, app_data, user_data):
     global dashboardBackendProcess
@@ -401,35 +450,57 @@ def startGUI(args : argparse.Namespace):
         dpg.add_file_extension(".py", color=(0, 255, 0, 255), custom_text="[Python]") # python files = green
 
     # ML-Agents Prompt
-    with dpg.window(label="ML-Agents Training", modal=True, pos=[GLOBAL_WIDTH/6, GLOBAL_HEIGHT/3] ,id="mlagents_prompt", show=False):
+    with dpg.window(label="ML-Agents Training", modal=True, pos=[GLOBAL_WIDTH/6, GLOBAL_HEIGHT/3], height=300, id="mlagents_prompt", show=False):
         dpg.add_text("This will start ml-agents training.\nChoose a ml-agents configuration file:")
         dpg.add_spacer(height=10)
         mlagents_config_file_to_run = dpg.add_combo(label="config_file", items=allMlAgentsConfigFiles)
         dpg.add_spacer(height=10)
-        with dpg.group(id="training_previous_run_group"):
-            previous_run = dpg.add_input_text(label="previous_run")
+        
+        dpg.add_text("Continue previous run?")
+        with dpg.group(horizontal=True):
+            resume_dropdown = dpg.add_combo(label="", items=training_resume_options, default_value=training_resume_options[0], width=200, tag="training_resume_dropdown", callback=mlagents_resume_dropdown_update)
+            _help(training_resume_help)
+        dpg.add_spacer(height=10)
+                
+        with dpg.group(id="training_previous_run_group", show=False):
+            dpg.add_text("Previous Run Results Directory")
+            with dpg.group(horizontal=True):
+                previous_run = dpg.add_input_text(label="", id="previous_run_input")
+                _help("Enter the path of the directory containing the results of the previous tuning and run.")
             dpg.add_spacer(height=10)
+
         dpg.add_separator()
         dpg.add_spacer(height=1)
 
         with dpg.group(horizontal=True):
-            dpg.add_button(label="Proceed", width=75, callback=run_training, user_data=[mlagents_config_file_to_run, previous_run])
+            dpg.add_button(label="Proceed", width=75, callback=run_training, user_data=[mlagents_config_file_to_run, previous_run, resume_dropdown])
             dpg.add_button(label="Cancel", width=75, callback=lambda: dpg.configure_item("mlagents_prompt", show=False))
 
     # Tuner Prompt
-    with dpg.window(label="Hyperparameter Tuning and Training", modal=True, pos=[GLOBAL_WIDTH/6, GLOBAL_HEIGHT/3] ,id="hyperparameter_prompt", show=False):
+    with dpg.window(label="Hyperparameter Tuning and Training", modal=True, pos=[GLOBAL_WIDTH/6, GLOBAL_HEIGHT/3], height=300, id="hyperparameter_prompt", show=False):
         dpg.add_text("This will start hyperparameter tuning and then start training.\nChoose a hyperparameter configuration file:")
         dpg.add_spacer(height=10)
         hyperparameter_config_file_to_run = dpg.add_combo(label="config_file", items=allHyperParameterTuningConfigFiles)
         dpg.add_spacer(height=10)
-        with dpg.group(id="tuning_previous_run_group"):
-            previous_run = dpg.add_input_text(label="previous_run")
+        
+        dpg.add_text("Continue previous run?")
+        with dpg.group(horizontal=True):
+            resume_dropdown = dpg.add_combo(label="", items=tuning_resume_options, default_value=tuning_resume_options[0], width=200, tag="tuning_resume_dropdown", callback=hyperparameter_resume_dropdown_update)
+            _help(tuning_resume_help)
+        dpg.add_spacer(height=10)
+                
+        with dpg.group(id="tuning_previous_run_group", show=False):
+            dpg.add_text("Previous Run Results Directory")
+            with dpg.group(horizontal=True):
+                previous_run = dpg.add_input_text(label="", id="tuning_previous_run_input")
+                _help("Enter the path of the directory containing the results of the previous tuning and training run.")
             dpg.add_spacer(height=10)
+
         dpg.add_separator()
         dpg.add_spacer(height=1)
 
         with dpg.group(horizontal=True):
-            dpg.add_button(label="Proceed", width=75, callback=run_tune_and_training, user_data=[hyperparameter_config_file_to_run, previous_run])
+            dpg.add_button(label="Proceed", width=75, callback=run_tune_and_training, user_data=[hyperparameter_config_file_to_run, previous_run, resume_dropdown])
             dpg.add_button(label="Cancel", width=75, callback=lambda: dpg.configure_item("hyperparameter_prompt", show=False))
 
     # PPO/SAC algorithm chooser prompt
@@ -522,9 +593,7 @@ def startGUI(args : argparse.Namespace):
                 dpg.add_spacer(width=8)
                 dpg.add_button(label="Save ML-Agents Configuration", user_data=[batch_size, buffer_size, learning_rate, learning_rate_schedule, normalize, hidden_units, num_layers, gamma, strength, keep_checkpoints, ml_max_steps, time_horizon, summary_freq, threaded, mlagents_config_file_name, args.ffmpeg_path], callback=edit_and_create_mlagents_config, small=True)
                 dpg.add_spacer(width=8)
-                dpg.add_button(label="Start Training", callback=prompt_show_ml_agents_config, user_data=[mlagents_config_file_to_run, False], small=True)
-                dpg.add_spacer(width=8)
-                dpg.add_button(label="Resume Training", callback=prompt_show_ml_agents_config, user_data=[mlagents_config_file_to_run, True], small=True)
+                dpg.add_button(label="Start Training", callback=prompt_show_ml_agents_config, user_data=[mlagents_config_file_to_run], small=True)
                 dpg.add_spacer(height=30)
 
         # Hyperparameter Tuner Main Window
@@ -570,9 +639,7 @@ def startGUI(args : argparse.Namespace):
                 
             dpg.add_spacer(width=30)
             with dpg.group(horizontal=True):
-                dpg.add_button(label="Start Hyperparameter Tuning and Training", callback=prompt_show_hyperparameter_config, user_data=[env_path, hyperparameter_config_file_to_run, False], small=True)
-                dpg.add_spacer(width=8)
-                dpg.add_button(label="Resume Previous Hyperparameter Tuning and Training", callback=prompt_show_hyperparameter_config, user_data=[env_path, hyperparameter_config_file_to_run, True], small=True)
+                dpg.add_button(label="Start Hyperparameter Tuning and Training", callback=prompt_show_hyperparameter_config, user_data=[env_path, hyperparameter_config_file_to_run], small=True)
             dpg.add_spacer(height=30)
 
         #  Main Window
