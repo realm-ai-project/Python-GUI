@@ -636,9 +636,7 @@ def startGUI(args : argparse.Namespace):
                 dpg.add_button(label="Restore Defaults", callback=restore_hyperparameter_config, user_data=[env_path, full_run_max_steps, total_trials, tuning_algorithm,num_envs, tuning_steps, training_algorithm], small=True)
                 dpg.add_spacer(width=8)
                 dpg.add_button(label="Save Hyperparameter Configuration", callback=edit_and_create_hyperparameter_config, user_data=[env_path, full_run_max_steps, total_trials, tuning_algorithm, hyperparameter_config_file_name, args.ffmpeg_path, num_envs, tuning_steps, training_algorithm], small=True)
-                
-            dpg.add_spacer(width=30)
-            with dpg.group(horizontal=True):
+                dpg.add_spacer(width=8)
                 dpg.add_button(label="Start Hyperparameter Tuning and Training", callback=prompt_show_hyperparameter_config, user_data=[env_path, hyperparameter_config_file_to_run], small=True)
             dpg.add_spacer(height=30)
 
