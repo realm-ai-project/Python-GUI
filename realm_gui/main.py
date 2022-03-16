@@ -1,9 +1,14 @@
 import argparse
+from asyncio.subprocess import PIPE, STDOUT
+from contextlib import redirect_stderr, redirect_stdout
 import copy
 import os
-import shutil
+import time
+import io
+from signal import CTRL_BREAK_EVENT
 import webbrowser
 import subprocess
+import threading
 from datetime import datetime
 from importlib.resources import path
 import multiprocessing
@@ -33,6 +38,9 @@ dashboardBackendProcess = None
 resultsDir = "results"
 runId = "ppo"
 
+# background process
+running_process = None
+
 # some dropdown options
 training_resume_options = ["No", "Initialize from previous run", "Continue previous run"]
 training_resume_help = ("Choose \"No\" to start a completed new training run. \n"
@@ -51,17 +59,53 @@ GLOBAL_WIDTH = 1000
 GLOBAL_HEIGHT = 800
 GLOBAL_FONT_SIZE = 1.15
 
+
+def run_process(args):
+    global running_process    
+    running_process = subprocess.Popen(args, stdout=PIPE, stderr=STDOUT)
+
+    # hide other sections
+    dpg.configure_item("tuning_section", show=False)
+    dpg.configure_item("training_section", show=False)
+    dpg.configure_item("dashboard_section", show=False)
+    dpg.configure_item("process_logs_section", show=True)
+
+    # show only logs (since we only support one running process right now)
+    log_thread = threading.Thread(target=handle_process_logs)
+    log_thread.start()
+
+def handle_process_logs():
+    global running_process
+
+    logs = ""
+    for line in io.TextIOWrapper(running_process.stdout, encoding="utf-8"):
+        logs = logs + line
+        dpg.set_value("process_logs", logs)
+
+
+def kill_running_process(sender, app_data, user_data):
+    global running_process
+    if running_process != None:
+        print(1)
+        # if there's a way to kill process without killing the whole group, we should do that
+        # but on windows it seems kinda hard
+        if os.name == 'nt':
+            # windows is weird
+            running_process.send_signal(CTRL_BREAK_EVENT)
+        running_process.terminate()
+        running_process = None
+
 def runTunerAndMlAgents(configPath: str, envPath: str, previous_run: str, start_new_run):
     global resultsDir, runId
 
     if start_new_run:
-        resultsDirParameter = "--output-path=\"%s\"" % os.path.join(resultsDir, runId)
+        resultsDirParameter = os.path.join(resultsDir, runId)
     else:
-        resultsDirParameter = "--output-path=\"%s\"" % previous_run
-    configPathParameter = "--config-path=\"%s\"" % configPath
-    envPathParameter = "--env-path=\"%s\"" % envPath
-    print("realm-tune %s %s %s" % (configPathParameter, envPathParameter, resultsDirParameter))
-    os.system("realm-tune %s %s %s" % (configPathParameter, envPathParameter, resultsDirParameter))
+        resultsDirParameter = previous_run
+    print("realm-tune --config-path \"%s\" --env-path \"%s\" --output-path \"%s\"" % (configPath, envPath, resultsDirParameter))
+    args = ["realm-tune", "--config-path", configPath, "--env-path", envPath, "--output-path", resultsDirParameter]
+
+    run_process(args)
 
 """
 mlagents-learn <trainer-config-file> --env=<env_name> --run-id=<run-identifier>
@@ -73,25 +117,26 @@ mlagents-learn <trainer-config-file> --env=<env_name> --run-id=<run-identifier>
 https://github.com/Unity-Technologies/ml-agents/blob/main/docs/Training-ML-Agents.md
 """
 def runMLagents(configPath: str, previous_run: str, start_new_run):
-    global resultsDir, runId
+    global resultsDir, runId, running_process
 
     if start_new_run:
         # start new run
         # if previous run is specified, intiailized from it
-        runIdParameter = "--run-id=" + runId
-        resultsDirParameter = "--results-dir=\"%s\"" % resultsDir
-        initializeFromParameter = "" if not previous_run else ("--initialize-from=\"%s\"" % previous_run)
-        
-        print("mlagents-learn \"%s\" %s %s %s --force" % (configPath, runIdParameter, resultsDirParameter, initializeFromParameter))
-        os.system("mlagents-learn \"%s\" %s %s %s --force" % (configPath, runIdParameter, resultsDirParameter, initializeFromParameter))
+        if previous_run:
+            print("mlagents-learn \"%s\" --run-id \"%s\" --results-dir \"%s\" --initialize-from \"%s\" --force" % (configPath, runId, resultsDir, previous_run))
+            args = ["mlagents-learn", configPath, "--run-id", runId, "--results-dir", resultsDir, "--initialize-from", previous_run, "--force"]
+        else:
+            print("mlagents-learn \"%s\" --run-id \"%s\" --results-dir \"%s\" --force" % (configPath, runId, resultsDir))
+            args = ["mlagents-learn", configPath, "--run-id", runId, "--results-dir", resultsDir, "--force"]
     else:
         # try to continue the previous run
         runId = os.path.basename(os.path.normpath(previous_run))
         resultsDir = os.path.dirname(os.path.normpath(previous_run))
-        runIdParameter = "--run-id=" + runId
-        resultsDirParameter = "--results-dir=\"%s\"" % resultsDir
-        print("mlagents-learn \"%s\" %s %s --resume" % (configPath,  runIdParameter, resultsDirParameter))
-        os.system("mlagents-learn \"%s\" %s %s --resume" % (configPath, runIdParameter, resultsDirParameter))
+
+        print("mlagents-learn \"%s\" --run-id \"%s\" --results-dir \"%s\" --resume" % (configPath, runId, resultsDir))
+        args = ["mlagents-learn", configPath, "--run-id", runId, "--results-dir", resultsDir, "--resume"]
+    
+    run_process(args)
 
 def loadMlAgentsConfig(mlAgentsConfigFile):
     with open(mlAgentsConfigFile, 'r') as f:
@@ -399,19 +444,13 @@ def hyperparameter_resume_dropdown_update(sender, app_data, user_data):
 
 
 def start_dashboard_backend(sender, app_data, user_data):
-    global dashboardBackendProcess
-    dashboardBackendProcess = subprocess.Popen("realm-report", creationflags=subprocess.CREATE_NEW_PROCESS_GROUP)
+    global running_process
     dpg.set_value("dashboardBackendStatus", "Dashboard backend process is running.")
-    
-def stop_dashboard_backend(sender, app_data, user_data):
-    global dashboardBackendProcess
-    if dashboardBackendProcess != None:
-        dashboardBackendProcess.terminate()
-        dashboardBackendProcess = None
-        dpg.set_value("dashboardBackendStatus", "Dashboard backend process is stopped.")
-    
+    run_process(["realm-report"])
+
 def open_dashboard(sender, app_data, user_data):
     start_dashboard_backend(sender, app_data, user_data)
+    time.sleep(1)
     webbrowser.open("http://localhost:5000")
 
 def on_start_gui(sender, app_data, user_data):
@@ -421,7 +460,7 @@ def on_start_gui(sender, app_data, user_data):
         open_dashboard(sender, app_data, user_data)
 
 def on_exit_gui(sender, app_data, user_data):
-    stop_dashboard_backend(sender, app_data, user_data)
+    kill_running_process(sender, app_data, user_data)
 
 def startGUI(args : argparse.Namespace):
     global showMlAgents, showHyperParameter, showDashboard, mlAgentsData, hyperParameterTuningData, allMlAgentsConfigFiles, allHyperParameterTuningConfigFiles
@@ -441,7 +480,8 @@ def startGUI(args : argparse.Namespace):
     # Values
     with dpg.value_registry():
         dpg.add_string_value(default_value="Dashboard backend process has not been started.", tag="dashboardBackendStatus")
-
+        dpg.add_string_value(default_value="", tag="process_logs")
+         
     # Able to browse previous runs and files
     with dpg.file_dialog(default_path="", directory_selector=False, show=False, id="file_dialog_id", height=150):
         dpg.add_file_extension(".*") # for any file - make it white 
@@ -532,7 +572,7 @@ def startGUI(args : argparse.Namespace):
         dpg.add_spacer(height=10)
 
         # ML-Agents Window
-        with dpg.collapsing_header(label="ML-Agents Training", default_open=showMlAgents):
+        with dpg.collapsing_header(label="ML-Agents Training", id="training_section", default_open=showMlAgents):
             dpg.add_text("Edit the values, press save, and then start training!", color=[232,163,33])
             with dpg.group(horizontal=True):
                 dpg.add_text("For more information about the ml-agents training configuration files", color=[232,163,33])
@@ -597,7 +637,7 @@ def startGUI(args : argparse.Namespace):
                 dpg.add_spacer(height=30)
 
         # Hyperparameter Tuner Main Window
-        with dpg.collapsing_header(label="Hyperparameter Tuning Configuration", default_open=showHyperParameter):
+        with dpg.collapsing_header(label="Hyperparameter Tuning Configuration", id="tuning_section", default_open=showHyperParameter):
             dpg.add_text("Basic Hyperparameter Tuning Configuration Values:\nEdit the values, press save, and then start training!", color=[232,163,33])
             dpg.add_spacer(height=10)
             
@@ -640,8 +680,8 @@ def startGUI(args : argparse.Namespace):
                 dpg.add_button(label="Start Hyperparameter Tuning and Training", callback=prompt_show_hyperparameter_config, user_data=[env_path, hyperparameter_config_file_to_run], small=True)
             dpg.add_spacer(height=30)
 
-        #  Main Window
-        with dpg.collapsing_header(label="Dashboard", default_open=showDashboard):
+        # Dashboard Window
+        with dpg.collapsing_header(label="Dashboard", id="dashboard_section", default_open=showDashboard):
             dpg.add_text("Dashboard:\nStart the dashboard backend to view your results in any web browser!", color=[232,163,33])
             dpg.add_spacer(height=10)
 
@@ -653,11 +693,19 @@ def startGUI(args : argparse.Namespace):
                 dpg.add_spacer(height=30)
 
         # Env Path Validation Error Prompt
-        with dpg.window(label="ERROR", modal=True, pos=[GLOBAL_WIDTH/6, GLOBAL_HEIGHT/3] ,id="env_path_validation_prompt", show=False):
+        with dpg.window(label="ERROR", modal=True, pos=[GLOBAL_WIDTH/6, GLOBAL_HEIGHT/3], id="env_path_validation_prompt", show=False):
             dpg.add_text("ERROR: env_path can not be empty. It must have a value.")
             dpg.add_spacer(height=10)
             dpg.add_button(label="Continue", width=75, callback=lambda: dpg.configure_item("env_path_validation_prompt", show=False))
 
+        # Process logs
+        with dpg.collapsing_header(label="Running Process", id="process_logs_section", default_open=True, show=False):
+            dpg.add_text("Process is running:")
+            dpg.add_spacer(height=10)
+            dpg.add_text(source="process_logs")
+            dpg.add_spacer(height=10)
+            dpg.add_button(label="Stop Process and Close Window", callback=on_exit_gui)
+    
     dpg.set_frame_callback(1, on_start_gui)
     dpg.set_exit_callback(on_exit_gui)
 
@@ -715,6 +763,8 @@ def main():
     defaultMlAgentsData = copy.deepcopy(mlAgentsData)
     defaultHyperParameterTuningData = copy.deepcopy(hyperParameterTuningData)
 
+    # this print line is important so Unity side knows if we started successfully
+    print("realm-gui started successfully", flush=True)
     startGUI(args)
 
 if __name__ == "__main__":
